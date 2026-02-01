@@ -2,7 +2,7 @@ import { useState } from 'react'
 import jobPaths from '../data/jobPaths'
 import './CareerPaths.css'
 
-function CareerPaths({ onBack }) {
+function CareerPaths({ onBack, onOpenRoadmap }) {
   const [savedPaths, setSavedPaths] = useState(['Full Stack Developer', 'Cyber Security', 'Neuroscience'])
   const [showExplore, setShowExplore] = useState(false)
 
@@ -28,9 +28,13 @@ function CareerPaths({ onBack }) {
         <h2>Saved Paths:</h2>
         <div className="saved-paths-grid">
           {savedPaths.map((path, index) => (
-            <div key={index} className="career-card">
+            <button
+              key={index}
+              className="career-card career-tab"
+              onClick={() => onOpenRoadmap(path)}
+            >
               {path}
-            </div>
+            </button>
           ))}
         </div>
 

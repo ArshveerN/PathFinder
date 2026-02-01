@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import './App.css'
 import CareerPaths from './components/CareerPaths'
+import CareerRoadmap from './components/CareerRoadmap'
 
 function App() {
   const [message, setMessage] = useState('')
   const [currentView, setCurrentView] = useState('dashboard')
+  const [selectedCareer, setSelectedCareer] = useState(null)
 
   const handleClick = (section) => {
     if (section === 'Career Paths') {
@@ -15,7 +17,24 @@ function App() {
   }
 
   if (currentView === 'careerPaths') {
-    return <CareerPaths onBack={() => setCurrentView('dashboard')} />
+    return (
+      <CareerPaths
+        onBack={() => setCurrentView('dashboard')}
+        onOpenRoadmap={(career) => {
+          setSelectedCareer(career)
+          setCurrentView('roadmap')
+        }}
+      />
+    )
+  }
+
+  if (currentView === 'roadmap') {
+    return (
+      <CareerRoadmap
+        career={selectedCareer}
+        onBack={() => setCurrentView('careerPaths')}
+      />
+    )
   }
 
   return (
@@ -36,21 +55,21 @@ function App() {
         </div>
 
         <div className="section">
-          <h2>US Course Reporting</h2>
+          <h2>Course Reporting</h2>
           <p>Browse course offering and year availability</p>
           <button onClick={() => handleClick('US Course Reporting')}>Browse Courses</button>
         </div>
 
         <div className="section">
-          <h2>CS2014 Grade Predictor</h2>
+          <h2>Grade Predictor</h2>
           <p>Calculate GPA based on your predicted grades</p>
-          <button onClick={() => handleClick('CS2014 Grade Predictor')}>Predict Grades</button>
+          <button onClick={() => handleClick('Grade Predictor')}>Predict Grades</button>
         </div>
 
         <div className="section">
-          <h2>CS10.1A Exam</h2>
-          <p>View exam schedules and resources</p>
-          <button onClick={() => handleClick('CS10.1A Exam')}>View Exam</button>
+          <h2>Q&A</h2>
+          <p>Ask and answer course-related questions</p>
+          <button onClick={() => handleClick('Q&A')}>Visit Forum</button>
         </div>
       </div>
 
