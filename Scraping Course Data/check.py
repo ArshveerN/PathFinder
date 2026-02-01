@@ -11,7 +11,7 @@ def json_to_csv(input_file, output_file):
         print("No data found in JSON file")
         return
 
-    # Get headers from the first object's keys
+    # Get headers from the first object's key
     headers = list(data[0].keys())
 
     # Write to CSV
