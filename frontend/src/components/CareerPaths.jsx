@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import jobPaths from '../data/jobPaths'
 import './CareerPaths.css'
-
+//function for career paths
 function CareerPaths({ onBack }) {
   const [savedPaths, setSavedPaths] = useState(['Full Stack Developer', 'Cyber Security', 'Neuroscience'])
   const [showExplore, setShowExplore] = useState(false)
