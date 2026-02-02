@@ -3,7 +3,7 @@ import jobPaths from '../data/jobPaths'
 import graph from '../prerequisiteGraph'
 
 function CareerRoadmap({ career, onBack }) {
-  const courses = jobPaths[career] || []
+  const pathCourses = jobPaths[career] || []
 
   // uses the class i defined in prerequisiteGraph.js to print the graph
   return (
