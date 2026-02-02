@@ -1,95 +1,188 @@
-import { createClient } from '@supabase/supabase-js';
+/**
+ * Prerequisite Graph Builder
+ * * This module parses the 'prerequisites_parsed' attribute from the 
+ * all_courses_prereq.json file and constructs a Directed Graph.
+ * * Data Format Reference:
+ * - Simple: "ANT101H5"
+ * - Complex: ["and", "ANT101H5", "BIO152H5"]
+ * - Nested:  ["or", ["and", "A", "B"], "C"]
+ */
+
+import coursesData from './Scraping Course Data/all_courses_prereq.json' with { type: "json" };
 import jobPaths from './jobPaths.js';
 
-const supabase = createClient(
-        'https://lizixhskuaptkbgoituc.supabase.co',
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxpeml4aHNrdWFwdGtiZ29pdHVjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk4ODk5NTksImV4cCI6MjA4NTQ2NTk1OX0.SSpx7bOByr7bx72SVWOykbX2BOTt2f0BejzuG_bRfl0'
-        );
+// Color codes for the Textbased output into the console
+const CLR = {
+    RESET: "\x1b[0m",
+    BRIGHT: "\x1b[1m",
+    DIM: "\x1b[2m",
+    RED: "\x1b[31m",
+    GREEN: "\x1b[32m",
+    YELLOW: "\x1b[33m",
+    CYAN: "\x1b[36m",
+    WHITE: "\x1b[37m"
+};
 
-/**
- * Uses a list of courses to create a prerequisite graph for a career path
- *
- * Ticket 2 stuff (come back to this and remove and make good and shi)
- * @param {string} careerName - The name of the career path
- */
-async function createPrerequisiteGraph(careerName) {
-    // Get the list of courses for the career path
-    const courses = jobPaths[careerName];
-
-    // in the case that the career path doesn't exist - return an empty graph
-    if (!courses) {
-        return { nodes: [], edges: [] };
+// Class to build the graph
+class PrereqGraph {
+    constructor() {
+        this.nodes = new Map();
+        this.edges = new Map();
     }
 
-    // create the graph
-    visited = new Set();
-    nodes = [];
-    edges = [];
-
-    // go through all the courses in the career path
-    for (const course of courses) {
-        await leafToTop(course, visited, nodes, edges);
+    // Build the graph
+    build(data) {
+        data.forEach(course => {
+            this.addNode(course);
+            if (course.prerequisites_parsed) {
+                const dependencies = this.extractDependencies(course.prerequisites_parsed);
+                dependencies.forEach(dep => {
+                    this.addEdge(dep.code, course.code, dep.type);
+                });
+            }
+        });
     }
 
-    return { nodes, edges };
-}
 
-/**
- * Recursively goes from a course node to the top of the graph (till no more prerequisites)
- * @param {*} course the coursecode to resolve
- */
-async function leafToTop(course, visited, nodes, edges) {
-    // if the course has already been visited, return
-    if (visited.has(course)) {
-        return;
-    }
+    // Add a node to the graph
+    addNode(course) {
+        this.nodes.set(course.code, {
+            name: course.name,
+            description: course.description,
+            logicTree: course.prerequisites_parsed
+        });
 
-    // add the course to the visited set
-    visited.add(course);
-
-    // query the database for the course
-    const { data: course, error } = await supabase.from('Courses').select('*').eq('Course Code', course).single();
-
-    // if the course doesn't exist or there is an error, return
-    if (error || !course) {
-        return;
-    }
-
-    // add the course to the nodes array
-    nodes.push({
-        id: course.code,
-        data: {
-            label: course.code,
-            title: course.name
+        if (!this.edges.has(course.code)) {
+            this.edges.set(course.code, []);
         }
-    });
-
-    // match all the prerequisites to the format of a course code -- need to change this later (come back to this and make good and shi)
-    let prerequisitesMatches;
-    if (course.prerequisites) {
-        prerequisitesMatches = course.prerequisites.match(/[A-Z]{3}\d{3}[A-Z]\d/g);
-    } else {
-        prerequisitesMatches = [];
     }
 
-    // start the recurive poriton (get prerequisite prerequisites)
-    if (prerequisitesMatches) {
-        for (const prerequisite of prerequisitesMatches) {
-            // add the edge from parent to the current course
-            edges.push({
-                id: `e-${prereq}-${courseCode}`,
-                source: prerequisite,
-                target: courseCode
+    // add an edge to the graph
+    addEdge(fromNode, toNode, type) {
+        if (!this.edges.has(fromNode)) {
+            this.edges.set(fromNode, []);
+        }
+        
+        const existingEdges = this.edges.get(fromNode);
+        if (!existingEdges.some(e => e.code === toNode)) {
+            existingEdges.push({ code: toNode, type: type });
+        }
+    }
+
+    // Extract dependencies from the prerequisite node (recursive function) for the and or logic
+    extractDependencies(prereqNode, parentType = 'AND') {
+        let deps = [];
+        if (!prereqNode) return deps;
+
+        if (typeof prereqNode === 'string') {
+            return [{ code: prereqNode.trim(), type: parentType }];
+        }
+
+        if (Array.isArray(prereqNode)) {
+            const operator = prereqNode[0].toUpperCase();
+            const operands = prereqNode.slice(1);
+            operands.forEach(op => {
+                deps = [...deps, ...this.extractDependencies(op, operator)];
             });
-
-            // recurse
-            await leafToTop(prerequisite, visited, nodes, edges);
-            
         }
+        
+        // Deduplicate
+        const uniqueDeps = [];
+        const seen = new Set();
+        deps.forEach(d => {
+            if (!seen.has(d.code)) {
+                seen.add(d.code);
+                uniqueDeps.push(d);
+            }
+        });
+
+        return uniqueDeps;
     }
-    
 
+    // Get the typed requirements for a course
+    getTypedRequirements(courseCode) {
+        const node = this.nodes.get(courseCode);
+        if (!node || !node.logicTree) return [];
+        return this.extractDependencies(node.logicTree);
+    }
 
+    // =========================================================================
+    /**
+     * Helper: Returns a flat list of ALL requirements for a single course
+     */
+    getFlatRequirements(courseCode) {
+        const node = this.nodes.get(courseCode);
+        if (!node || !node.logicTree) return [];
+        return this.extractDependencies(node.logicTree);
+    }
+
+    /**
+     * PRETTY PRINTER
+     * Uses colors and box-drawing characters for a professional look.
+     */
+    printCareerPathGraph(pathName, jobPathsObject) {
+        const pathCourses = jobPathsObject[pathName];
+
+        if (!pathCourses) {
+            console.log(`${CLR.RED}Error: Career path "${pathName}" not found.${CLR.RESET}`);
+            return;
+        }
+
+        console.log(`\n${CLR.CYAN}============================================${CLR.RESET}`);
+        console.log(`${CLR.BRIGHT} 🚀 CAREER PATH MAP: ${pathName.toUpperCase()} ${CLR.RESET}`);
+        console.log(`${CLR.CYAN}============================================${CLR.RESET}`);
+        console.log(`${CLR.DIM} Legend: ${CLR.GREEN}● In Path${CLR.RESET} | ${CLR.RED}▲ External Requirement${CLR.RESET}`);
+        console.log(`${CLR.DIM} Logic:  ${CLR.WHITE}(AND) = Mandatory${CLR.RESET} | ${CLR.YELLOW}(OR) = Optional/Choice${CLR.RESET}\n`);
+
+        const sortedCourses = pathCourses.sort();
+
+        sortedCourses.forEach(courseCode => {
+            const requirements = this.getTypedRequirements(courseCode);
+            
+            // Header for the Course
+            console.log(`${CLR.BRIGHT}${CLR.WHITE}📦 ${courseCode}${CLR.RESET}`);
+
+            if (requirements.length === 0) {
+                console.log(`   ${CLR.GREEN}└── No Prerequisites (Start Here!)${CLR.RESET}\n`);
+                return;
+            }
+
+            // Print each requirement
+            requirements.forEach((req, index) => {
+                const isLast = index === requirements.length - 1;
+                const prefix = isLast ? "└──" : "├──";
+                
+                const inPath = pathCourses.includes(req.code);
+                
+                // Determine Colors & Icons based on status
+                let icon = "";
+                let color = "";
+                
+                if (inPath) {
+                    icon = "✅"; // or ●
+                    color = CLR.GREEN;
+                } else {
+                    icon = "⚠️ "; // or ▲
+                    color = CLR.RED;
+                }
+
+                // Format the Logic Type (AND/OR)
+                let typeLabel = "";
+                if (req.type === 'OR') typeLabel = `${CLR.YELLOW}(OR)${CLR.RESET}`;
+                else typeLabel = `${CLR.DIM}(AND)${CLR.RESET}`;
+
+                console.log(`   ${CLR.DIM}${prefix}${CLR.RESET} ${icon} ${color}${req.code}${CLR.RESET} ${typeLabel}`);
+            });
+            console.log(""); // Empty line for spacing
+        });
+    }
 }
 
-export default getFullPathway;
+// Execution
+const graph = new PrereqGraph();
+graph.build(coursesData);
+graph.printCareerPathGraph("Full Stack", jobPaths);
+
+
+
+export default graph;
