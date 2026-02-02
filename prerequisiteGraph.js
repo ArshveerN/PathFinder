@@ -10,106 +10,101 @@
 
 import coursesData from './Scraping Course Data/all_courses_prereq.json' with { type: "json" };
 import jobPaths from './jobPaths.js';
+
+// Color codes for the Textbased output into the console
+const CLR = {
+    RESET: "\x1b[0m",
+    BRIGHT: "\x1b[1m",
+    DIM: "\x1b[2m",
+    RED: "\x1b[31m",
+    GREEN: "\x1b[32m",
+    YELLOW: "\x1b[33m",
+    CYAN: "\x1b[36m",
+    WHITE: "\x1b[37m"
+};
+
+// Class to build the graph
 class PrereqGraph {
     constructor() {
-        this.nodes = new Map(); // Stores course details
-        this.edges = new Map(); // Stores adjacency list (Parent -> Children)
+        this.nodes = new Map();
+        this.edges = new Map();
     }
 
-    /**
-     * Initialize the graph with the raw JSON data
-     */
+    // Build the graph
     build(data) {
         data.forEach(course => {
             this.addNode(course);
-            
             if (course.prerequisites_parsed) {
-                // We extract a flat list of dependencies to build the basic graph edges.
-                // If you need to enforce strict logic (AND vs OR), you would use 
-                // the 'prerequisites_parsed' tree directly during traversal.
                 const dependencies = this.extractDependencies(course.prerequisites_parsed);
-                
-                dependencies.forEach(prereqCode => {
-                    this.addEdge(prereqCode, course.code);
+                dependencies.forEach(dep => {
+                    this.addEdge(dep.code, course.code, dep.type);
                 });
             }
         });
     }
 
+
+    // Add a node to the graph
     addNode(course) {
         this.nodes.set(course.code, {
             name: course.name,
             description: course.description,
-            // Keep the raw logic tree for advanced validation later
-            logicTree: course.prerequisites_parsed 
+            logicTree: course.prerequisites_parsed
         });
-        
+
         if (!this.edges.has(course.code)) {
             this.edges.set(course.code, []);
         }
     }
 
-    addEdge(fromNode, toNode) {
-        // Ensure 'from' node exists (it might be a course not in our DB)
+    // add an edge to the graph
+    addEdge(fromNode, toNode, type) {
         if (!this.edges.has(fromNode)) {
             this.edges.set(fromNode, []);
         }
         
-        // Avoid duplicates
-        if (!this.edges.get(fromNode).includes(toNode)) {
-            this.edges.get(fromNode).push(toNode);
+        const existingEdges = this.edges.get(fromNode);
+        if (!existingEdges.some(e => e.code === toNode)) {
+            existingEdges.push({ code: toNode, type: type });
         }
     }
 
-    /**
-     * RECURSIVE PARSER
-     * Flattens the nested ["and", ["or", "A", "B"], "C"] structure 
-     * into a simple list of codes ["A", "B", "C"] for graph linking.
-     */
-    extractDependencies(prereqNode) {
+    // Extract dependencies from the prerequisite node (recursive function) for the and or logic
+    extractDependencies(prereqNode, parentType = 'AND') {
         let deps = [];
-
-        // CASE 1: Null (No prerequisites)
         if (!prereqNode) return deps;
 
-        // CASE 2: String (Single course code)
         if (typeof prereqNode === 'string') {
-            // Clean the string if necessary (sometimes whitespace creeps in)
-            return [prereqNode.trim()]; 
+            return [{ code: prereqNode.trim(), type: parentType }];
         }
 
-        // CASE 3: Array (Logic structure)
         if (Array.isArray(prereqNode)) {
-            // The first element is the operator ("and", "or"), skip it
+            const operator = prereqNode[0].toUpperCase();
             const operands = prereqNode.slice(1);
-
             operands.forEach(op => {
-                // Recursively extract from children
-                const childDeps = this.extractDependencies(op);
-                deps = [...deps, ...childDeps];
+                deps = [...deps, ...this.extractDependencies(op, operator)];
             });
         }
+        
+        // Deduplicate
+        const uniqueDeps = [];
+        const seen = new Set();
+        deps.forEach(d => {
+            if (!seen.has(d.code)) {
+                seen.add(d.code);
+                uniqueDeps.push(d);
+            }
+        });
 
-        // Remove duplicates in the flat list
-        return [...new Set(deps)];
+        return uniqueDeps;
     }
 
-    /**
-     * Utility: Find what opens up after taking a specific course
-     */
-    getUnlocks(courseCode) {
-        return this.edges.get(courseCode) || [];
+    // Get the typed requirements for a course
+    getTypedRequirements(courseCode) {
+        const node = this.nodes.get(courseCode);
+        if (!node || !node.logicTree) return [];
+        return this.extractDependencies(node.logicTree);
     }
-
-    /**
-     * Utility: Get direct requirements for a course
-     */
-    getRequirements(courseCode) {
-        const course = this.nodes.get(courseCode);
-        if (!course) return null;
-        return course.logicTree;
-    }
-
 
     // =========================================================================
     /**
@@ -122,45 +117,70 @@ class PrereqGraph {
     }
 
     /**
-     * Prints the dependency graph specifically for a named Career Path.
+     * PRETTY PRINTER
+     * Uses colors and box-drawing characters for a professional look.
      */
     printCareerPathGraph(pathName, jobPathsObject) {
-        // Access the specific list from the jobPaths object
         const pathCourses = jobPathsObject[pathName];
 
         if (!pathCourses) {
-            console.log(`Error: Career path "${pathName}" not found.`);
+            console.log(`${CLR.RED}Error: Career path "${pathName}" not found.${CLR.RESET}`);
             return;
         }
 
-        console.log(`\n=== CAREER PATH GRAPH: ${pathName.toUpperCase()} ===`);
-        console.log(`Total Courses: ${pathCourses.length}\n`);
+        console.log(`\n${CLR.CYAN}============================================${CLR.RESET}`);
+        console.log(`${CLR.BRIGHT} 🚀 CAREER PATH MAP: ${pathName.toUpperCase()} ${CLR.RESET}`);
+        console.log(`${CLR.CYAN}============================================${CLR.RESET}`);
+        console.log(`${CLR.DIM} Legend: ${CLR.GREEN}● In Path${CLR.RESET} | ${CLR.RED}▲ External Requirement${CLR.RESET}`);
+        console.log(`${CLR.DIM} Logic:  ${CLR.WHITE}(AND) = Mandatory${CLR.RESET} | ${CLR.YELLOW}(OR) = Optional/Choice${CLR.RESET}\n`);
 
         const sortedCourses = pathCourses.sort();
 
         sortedCourses.forEach(courseCode => {
-            const requirements = this.getFlatRequirements(courseCode);
+            const requirements = this.getTypedRequirements(courseCode);
             
-            // Filter requirements: Is the prereq INSIDE the path or EXTERNAL?
-            const internalReqs = requirements.filter(r => pathCourses.includes(r));
-            const externalReqs = requirements.filter(r => !pathCourses.includes(r));
+            // Header for the Course
+            console.log(`${CLR.BRIGHT}${CLR.WHITE}📦 ${courseCode}${CLR.RESET}`);
 
-            // Print Logic
             if (requirements.length === 0) {
-                console.log(`[+] ${courseCode}: No Prerequisites`);
-            } else {
-                console.log(`[|] ${courseCode} requires:`);
-                if (internalReqs.length > 0) console.log(`    └─ In Path: ${internalReqs.join(', ')}`);
-                if (externalReqs.length > 0) console.log(`    └─ External: ${externalReqs.join(', ')}`);
+                console.log(`   ${CLR.GREEN}└── No Prerequisites (Start Here!)${CLR.RESET}\n`);
+                return;
             }
+
+            // Print each requirement
+            requirements.forEach((req, index) => {
+                const isLast = index === requirements.length - 1;
+                const prefix = isLast ? "└──" : "├──";
+                
+                const inPath = pathCourses.includes(req.code);
+                
+                // Determine Colors & Icons based on status
+                let icon = "";
+                let color = "";
+                
+                if (inPath) {
+                    icon = "✅"; // or ●
+                    color = CLR.GREEN;
+                } else {
+                    icon = "⚠️ "; // or ▲
+                    color = CLR.RED;
+                }
+
+                // Format the Logic Type (AND/OR)
+                let typeLabel = "";
+                if (req.type === 'OR') typeLabel = `${CLR.YELLOW}(OR)${CLR.RESET}`;
+                else typeLabel = `${CLR.DIM}(AND)${CLR.RESET}`;
+
+                console.log(`   ${CLR.DIM}${prefix}${CLR.RESET} ${icon} ${color}${req.code}${CLR.RESET} ${typeLabel}`);
+            });
+            console.log(""); // Empty line for spacing
         });
     }
 }
 
-// Usage Example
+// Execution
 const graph = new PrereqGraph();
 graph.build(coursesData);
-// Run the print function for "Full Stack"
 graph.printCareerPathGraph("Full Stack", jobPaths);
 
 
