@@ -1,22 +1,15 @@
-import { useState } from 'react'
-import jobPaths from '../data/jobPaths'
 import './CareerPaths.css'
 
-//function for career paths
-function CareerPaths({ onBack, onOpenRoadmap }) {
-
-  const [savedPaths, setSavedPaths] = useState(['Full Stack Developer', 'Cyber Security', 'Neuroscience'])
-  const [showExplore, setShowExplore] = useState(false)
-
-  const handleAddPath = (careerName) => {
-    if (!savedPaths.includes(careerName)) {
-      setSavedPaths([...savedPaths, careerName])
-    }
-    setShowExplore(false)
-  }
-
-  const allCareers = Object.keys(jobPaths)
-
+function CareerPathsView({ 
+  savedPaths, 
+  showExplore, 
+  allCareers, 
+  onBack, 
+  onOpenRoadmap, 
+  onAddPath, 
+  onToggleExplore, 
+  onCloseExplore 
+}) {
   return (
     <div className="career-paths-container">
       <div className="career-paths-header">
@@ -42,7 +35,7 @@ function CareerPaths({ onBack, onOpenRoadmap }) {
 
         <button 
           className="explore-button"
-          onClick={() => setShowExplore(!showExplore)}
+          onClick={onToggleExplore}
         >
           Explore Paths
         </button>
@@ -56,7 +49,7 @@ function CareerPaths({ onBack, onOpenRoadmap }) {
                   <button
                     key={index}
                     className="career-list-item"
-                    onClick={() => handleAddPath(career)}
+                    onClick={() => onAddPath(career)}
                   >
                     {career}
                   </button>
@@ -64,7 +57,7 @@ function CareerPaths({ onBack, onOpenRoadmap }) {
               </div>
               <button 
                 className="close-button"
-                onClick={() => setShowExplore(false)}
+                onClick={onCloseExplore}
               >
                 Close
               </button>
@@ -76,4 +69,4 @@ function CareerPaths({ onBack, onOpenRoadmap }) {
   )
 }
 
-export default CareerPaths
+export default CareerPathsView
