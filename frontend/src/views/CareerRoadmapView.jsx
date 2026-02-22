@@ -111,7 +111,8 @@ const ZOOM_MIN = 0.3
 const ZOOM_MAX = 2.0
 const ZOOM_STEP = 0.15
 
-function CareerRoadmapView({ career, coursesWithRequirements, onBack }) {
+// MODIFICATION: destructured props now include loading
+function CareerRoadmapView({ career, coursesWithRequirements, getCourseDetails, loading, onBack }) {
   const [selectedNode, setSelectedNode] = useState(null)
   const containerRef = useRef(null)
   const [zoom, setZoom] = useState(1)
@@ -289,16 +290,25 @@ function CareerRoadmapView({ career, coursesWithRequirements, onBack }) {
 
   const selectedCourse = useMemo(() => {
     if (!selectedNode) return null
-    return coursesWithRequirements.find(c => c.courseCode === selectedNode)
-  }, [selectedNode, coursesWithRequirements])
+    return getCourseDetails(selectedNode) 
+  }, [selectedNode, getCourseDetails])
 
   // Stroke widths scaled
   const sw = 1.6 * zoom
   const swHL = 2.6 * zoom
 
+  // INSERTION: Loading UI
+  if (loading) {
+    return (
+      <div className="rm-container" style={{ justifyContent: 'center', alignItems: 'center' }}>
+        <p style={{ color: '#6b7280', fontSize: '14px' }}>Loading Career Roadmap...</p>
+      </div>
+    )
+  }
+
   return (
     <div className="rm-container" onClick={(e) => {
-      if (!e.target.closest('.flow-node') && !e.target.closest('.flow-detail-panel') && !e.target.closest('.zoom-controls'))
+      if (!e.target.closest('.flow-node') && !e.target.closest('.zoom-controls'))
         setSelectedNode(null)
     }}>
       <div className="rm-header">
@@ -414,68 +424,79 @@ function CareerRoadmapView({ career, coursesWithRequirements, onBack }) {
 
         {/* Detail panel */}
         {selectedCourse && (
-          <div className="flow-detail-panel">
-            <div className="fdp-header">
-              <span className="fdp-code">{selectedCourse.courseCode}</span>
-              <button className="fdp-close" onClick={() => setSelectedNode(null)}>✕</button>
-            </div>
-
-            {selectedCourse.requirements.length === 0 ? (
-              <div className="fdp-empty">
-                <span className="fdp-start-badge">Start Here</span>
-                <p>This course has no prerequisites.</p>
-              </div>
-            ) : (
-              <div className="fdp-reqs">
-                <div className="fdp-section-title">Prerequisites</div>
-                {selectedCourse.requirements.filter(r => r.type === 'AND').length > 0 && (
-                  <div className="fdp-group">
-                    <span className="fdp-tag fdp-tag-and">AND — All required</span>
-                    {selectedCourse.requirements.filter(r => r.type === 'AND').map((req, i) => (
-                      <div key={i} className="fdp-req-row">
-                        <span className={`fdp-dot ${pathCodes.has(req.code) ? 'dot-in' : 'dot-ext'}`} />
-                        <span className="fdp-req-code">{req.code}</span>
-                        <span className={pathCodes.has(req.code) ? 'fdp-label-in' : 'fdp-label-ext'}>
-                          {pathCodes.has(req.code) ? 'In path' : 'External'}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {selectedCourse.requirements.filter(r => r.type === 'OR').length > 0 && (
-                  <div className="fdp-group">
-                    <span className="fdp-tag fdp-tag-or">OR — Choose one</span>
-                    {selectedCourse.requirements.filter(r => r.type === 'OR').map((req, i) => (
-                      <div key={i} className="fdp-req-row">
-                        <span className={`fdp-dot ${pathCodes.has(req.code) ? 'dot-in' : 'dot-ext'}`} />
-                        <span className="fdp-req-code">{req.code}</span>
-                        <span className={pathCodes.has(req.code) ? 'fdp-label-in' : 'fdp-label-ext'}>
-                          {pathCodes.has(req.code) ? 'In path' : 'External'}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {(() => {
-              const unlocks = edges.filter(e => e.from === selectedCourse.courseCode)
-              if (unlocks.length === 0) return null
-              return (
-                <div className="fdp-reqs" style={{ marginTop: 16 }}>
-                  <div className="fdp-section-title">Unlocks</div>
-                  <div className="fdp-group">
-                    {unlocks.map((e, i) => (
-                      <div key={i} className="fdp-req-row">
-                        <span className="fdp-dot" style={{ background: '#3b82f6' }} />
-                        <span className="fdp-req-code">{e.to}</span>
-                      </div>
-                    ))}
-                  </div>
+          <div className="fdp-overlay" onClick={() => setSelectedNode(null)}>
+            <div className="flow-detail-panel" onClick={(e) => e.stopPropagation()}>
+              <div className="fdp-header">
+                <div style={{ paddingRight: '12px' }}>
+                  <span className="fdp-code">{selectedCourse.courseCode}</span>
+                  {selectedCourse.name && <h3 className="fdp-name">{selectedCourse.name}</h3>}
                 </div>
-              )
-            })()}
+                <button className="fdp-close" onClick={() => setSelectedNode(null)}>✕</button>
+              </div>
+
+              {selectedCourse.description && (
+                <div className="fdp-desc">
+                  {selectedCourse.description}
+                </div>
+              )}
+
+              {selectedCourse.requirements.length === 0 ? (
+                <div className="fdp-empty">
+                  <span className="fdp-start-badge">Start Here</span>
+                  <p>This course has no prerequisites.</p>
+                </div>
+              ) : (
+                <div className="fdp-reqs">
+                  <div className="fdp-section-title">Prerequisites</div>
+                  {selectedCourse.requirements.filter(r => r.type === 'AND').length > 0 && (
+                    <div className="fdp-group">
+                      <span className="fdp-tag fdp-tag-and">AND — All required</span>
+                      {selectedCourse.requirements.filter(r => r.type === 'AND').map((req, i) => (
+                        <div key={i} className="fdp-req-row" onClick={() => setSelectedNode(req.code)}>
+                          <span className={`fdp-dot ${pathCodes.has(req.code) ? 'dot-in' : 'dot-ext'}`} />
+                          <span className="fdp-req-code">{req.code}</span>
+                          <span className={pathCodes.has(req.code) ? 'fdp-label-in' : 'fdp-label-ext'}>
+                            {pathCodes.has(req.code) ? 'In path' : 'External'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {selectedCourse.requirements.filter(r => r.type === 'OR').length > 0 && (
+                    <div className="fdp-group">
+                      <span className="fdp-tag fdp-tag-or">OR — Choose one</span>
+                      {selectedCourse.requirements.filter(r => r.type === 'OR').map((req, i) => (
+                        <div key={i} className="fdp-req-row" onClick={() => setSelectedNode(req.code)}>
+                          <span className={`fdp-dot ${pathCodes.has(req.code) ? 'dot-in' : 'dot-ext'}`} />
+                          <span className="fdp-req-code">{req.code}</span>
+                          <span className={pathCodes.has(req.code) ? 'fdp-label-in' : 'fdp-label-ext'}>
+                            {pathCodes.has(req.code) ? 'In path' : 'External'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {(() => {
+                const unlocks = edges.filter(e => e.from === selectedCourse.courseCode)
+                if (unlocks.length === 0) return null
+                return (
+                  <div className="fdp-reqs" style={{ marginTop: 16 }}>
+                    <div className="fdp-section-title">Unlocks</div>
+                    <div className="fdp-group">
+                      {unlocks.map((e, i) => (
+                        <div key={i} className="fdp-req-row" onClick={() => setSelectedNode(e.to)}>
+                          <span className="fdp-dot" style={{ background: '#3b82f6' }} />
+                          <span className="fdp-req-code">{e.to}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })()}
+            </div>
           </div>
         )}
       </div>
