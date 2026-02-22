@@ -48,23 +48,15 @@ function buildColumns(courses) {
     return d
   }
 
+  // compute prereq depths
   courses.forEach(c => getPrereqDepth(c.courseCode))
 
-  // Final row = max(prereq depth, level-based minimum row)
+  // initial row: ensure minimum row respects course level
   const finalRows = new Map()
   courses.forEach(c => {
     const prereqRow = depths.get(c.courseCode) || 0
     const levelRow = getCourseLevel(c.courseCode)
     finalRows.set(c.courseCode, Math.max(prereqRow, levelRow))
-  })
-
-  // Group into rows
-  const maxRow = Math.max(...Array.from(finalRows.values()), 0)
-  const columns = []
-  for (let i = 0; i <= maxRow; i++) columns.push([])
-  courses.forEach(c => {
-    const row = finalRows.get(c.courseCode) || 0
-    columns[row].push(c)
   })
 
   // Build edges: for each course, connect its in-path prereqs to it
@@ -77,15 +69,82 @@ function buildColumns(courses) {
     })
   })
 
+  // Enforce prerequisite ordering: for every edge from -> to, require row(from) < row(to)
+  // Iterate until stable (bounded iterations)
+  for (let iter = 0; iter < 20; iter++) {
+    let changed = false
+    edges.forEach(e => {
+      const fromR = finalRows.get(e.from) || 0
+      const toR = finalRows.get(e.to) || 0
+      if (fromR >= toR) {
+        finalRows.set(e.to, fromR + 1)
+        changed = true
+      }
+    })
+    if (!changed) break
+  }
+
+  // Enforce level ordering: ensure all rows for level L are strictly above level L+1
+  const levels = new Map()
+  courses.forEach(c => {
+    const lvl = getCourseLevel(c.courseCode)
+    if (!levels.has(lvl)) levels.set(lvl, [])
+    levels.get(lvl).push(c.courseCode)
+  })
+
+  const maxLevel = Math.max(...Array.from(levels.keys(), v => v), 0)
+  let maxAssigned = -1
+  for (let lvl = 0; lvl <= maxLevel; lvl++) {
+    const codes = levels.get(lvl) || []
+    if (codes.length === 0) continue
+    const minRow = Math.min(...codes.map(code => finalRows.get(code) || 0))
+    if (minRow <= maxAssigned) {
+      const delta = maxAssigned - minRow + 1
+      // shift all courses at this level and higher
+      courses.forEach(c => {
+        if (getCourseLevel(c.courseCode) >= lvl) {
+          finalRows.set(c.courseCode, (finalRows.get(c.courseCode) || 0) + delta)
+        }
+      })
+    }
+    const maxRowThis = Math.max(...codes.map(code => finalRows.get(code) || 0))
+    maxAssigned = Math.max(maxAssigned, maxRowThis)
+  }
+
+  // final pass: re-apply prerequisite ordering to fix any regressions
+  for (let iter = 0; iter < 10; iter++) {
+    let changed = false
+    edges.forEach(e => {
+      const fromR = finalRows.get(e.from) || 0
+      const toR = finalRows.get(e.to) || 0
+      if (fromR >= toR) {
+        finalRows.set(e.to, fromR + 1)
+        changed = true
+      }
+    })
+    if (!changed) break
+  }
+
+  // Group into rows
+  const maxRow = Math.max(...Array.from(finalRows.values()), 0)
+  const columns = []
+  for (let i = 0; i <= maxRow; i++) columns.push([])
+  courses.forEach(c => {
+    const row = finalRows.get(c.courseCode) || 0
+    columns[row].push(c)
+  })
+
   return { columns, edges, finalRows }
 }
 
 const NODE_W = 140
 const NODE_H = 52
-const COL_GAP = 110
+// horizontal gap between nodes (reduced to tighten layout)
+const COL_GAP = 64
 // increase row gap for more vertical spacing
 const ROW_GAP = 72
-const PAD_LEFT = 40
+// left/right padding around the graph
+const PAD_LEFT = 24
 // increase top padding so first row sits lower
 const PAD_TOP = 64
 
@@ -208,21 +267,18 @@ function CareerRoadmapView({ career, coursesWithRequirements, onBack }) {
   const maxColsLen = Math.max(0, ...columns.map(c => c.length))
   const naturalWidth = Math.max(PAD_LEFT * 2 + maxColsLen * NODE_W + Math.max(0, (maxColsLen - 1)) * COL_GAP, Math.ceil(maxX - minX + PAD_LEFT * 2))
   const canvasWidth = naturalWidth
-  // Scale the canvas down to fit if it is wider than the available container
-  const scale = containerWidth > 0 && naturalWidth > containerWidth
-    ? containerWidth / naturalWidth
+
+  // Compute graph bounding box and scale so the graph exactly fits the available container width
+  const graphMin = minX
+  const graphMax = maxX
+  const graphWidth = Math.max(0, graphMax - graphMin)
+  const H_MARGIN = PAD_LEFT // left/right margin inside viewport
+  const scale = containerWidth > 0
+    ? containerWidth / Math.max(1, (graphWidth + H_MARGIN * 2))
     : 1
-  // Center the computed node positions horizontally within the natural canvas width
-  // (compute graph width and shift all node x positions so the graph is centered)
-  const graphWidth = Math.max(0, maxX - minX)
-  const desiredLeft = (naturalWidth - graphWidth) / 2
-  const shiftX = isFinite(minX) ? (desiredLeft - minX) : 0
-  if (shiftX && shiftX !== 0) {
-    nodePositions.forEach((v) => { v.x = v.x + shiftX })
-    // update minX/maxX after shift (useful if other logic relies on them)
-    minX = Math.min(...Array.from(nodePositions.values()).map(v => v.x))
-    maxX = Math.max(...Array.from(nodePositions.values()).map(v => v.x + NODE_W))
-  }
+  // translation (in natural px) so that after scaling the graphMin maps to H_MARGIN
+  // (minX + tx) * scale = H_MARGIN  => tx = H_MARGIN / scale - minX
+  const tx = isFinite(graphMin) ? (H_MARGIN / Math.max(scale, 1e-6) - graphMin) : 0
   const canvasHeight = PAD_TOP * 2 + columns.length * NODE_H + Math.max(0, (columns.length - 1)) * ROW_GAP
 
   // Get the selected course's details
@@ -302,9 +358,9 @@ function CareerRoadmapView({ career, coursesWithRequirements, onBack }) {
         {/* Scrollable flowchart */}
         <div className="flow-scroll" ref={containerRef}>
           {/* Sizer: occupies the scaled height so the scrollbar is correct */}
-          <div style={{ width: '100%', position: 'relative', height: canvasHeight * scale }}>
-          {/* Canvas: full natural size but visually scaled to fit container */}
-          <div className="flow-canvas" style={{ width: canvasWidth, height: canvasHeight, position: 'absolute', top: 0, left: 0, transform: `scale(${scale})`, transformOrigin: 'top left' }}>
+          <div style={{ width: '100%', position: 'relative', height: canvasHeight * scale, display: 'flex', justifyContent: 'flex-start' }}>
+          {/* Canvas: full natural size but visually scaled to fit container; positioned via translateX so left/right edges align */}
+          <div className="flow-canvas" style={{ width: canvasWidth, height: canvasHeight, position: 'relative', transform: `translateX(${tx}px) scale(${scale})`, transformOrigin: 'top left' }}>
             {/* SVG lines */}
             <svg
               ref={svgRef}
