@@ -1,0 +1,209 @@
+.qanda-layout {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 30px;
+  padding: 30px 40px;
+  max-width: 1200px;
+  margin: 0 auto;
+  align-items: start;
+}
+
+/* ── Feed (left column) ── */
+.feed-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: 16px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #2c3e50;
+}
+
+.feed-status {
+  color: #888;
+  font-size: 14px;
+  padding: 20px 0;
+}
+
+.post-card {
+  background-color: white;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin-bottom: 12px;
+  transition: box-shadow 0.2s;
+}
+
+.post-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.post-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.post-author {
+  font-weight: 700;
+  font-size: 14px;
+  color: #2c3e50;
+}
+
+.post-date {
+  font-size: 12px;
+  color: #999;
+}
+
+.post-question {
+  font-size: 14px;
+  color: #444;
+  line-height: 1.6;
+}
+
+/* ── Form panel (right column) ── */
+.qanda-form-panel {
+  position: sticky;
+  top: 20px;
+}
+
+.qanda-card {
+  background-color: white;
+  border: 2px solid #333;
+  border-radius: 8px;
+  padding: 28px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.qanda-card h2 {
+  font-size: 20px;
+  font-weight: 600;
+  color: #2c3e50;
+  border-bottom: 2px solid #2c3e50;
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+}
+
+.qanda-subtitle {
+  color: #555;
+  font-size: 13px;
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
+.qanda-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-group label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.form-input,
+.form-textarea {
+  border: 2px solid #ccc;
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-family: inherit;
+  color: #2c3e50;
+  transition: border-color 0.2s;
+  resize: vertical;
+  background-color: #fafafa;
+}
+
+.form-input:focus,
+.form-textarea:focus {
+  outline: none;
+  border-color: #3498db;
+  background-color: white;
+}
+
+.form-input:disabled,
+.form-textarea:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.qanda-submit-btn {
+  background-color: #3498db;
+  color: white;
+  border: 2px solid #2c3e50;
+  padding: 12px 24px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.qanda-submit-btn:hover:not(:disabled) {
+  background-color: #2980b9;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.qanda-submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.qanda-error {
+  background-color: #fdecea;
+  border: 1px solid #e74c3c;
+  color: #c0392b;
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-size: 13px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.qanda-success {
+  background-color: #eafaf1;
+  border: 1px solid #27ae60;
+  color: #1e8449;
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-size: 13px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.dismiss-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  color: inherit;
+  padding: 0 4px;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.dismiss-btn:hover {
+  opacity: 1;
+}
+
+@media (max-width: 768px) {
+  .qanda-layout {
+    grid-template-columns: 1fr;
+    padding: 20px;
+  }
+
+  .qanda-form-panel {
+    position: static;
+  }
+}
