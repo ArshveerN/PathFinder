@@ -10,6 +10,8 @@ function useApp() {
       setCurrentView('careerPaths')
     } else if (section === 'US Course Reporting') {
       setCurrentView('browseCourses')
+    } else if (section === 'Q&A') {
+  setCurrentView('qanda')
     } else {
       setMessage(`${section}: Locked`)
     }

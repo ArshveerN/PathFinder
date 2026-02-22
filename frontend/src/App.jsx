@@ -3,6 +3,7 @@ import DashboardView from './views/DashboardView'
 import CareerPathsController from './controllers/CareerPathsController'
 import CareerRoadmapController from './controllers/CareerRoadmapController'
 import BrowseCoursesController from './controllers/BrowseCoursesController'
+import QandAController from './controllers/QandAController'
 
 function App() {
     const {
@@ -37,6 +38,10 @@ function App() {
         return (
             <BrowseCoursesController onBack={goToDashboard} />
         )
+    }
+
+    if (currentView === 'qanda') {
+        return <QandAController onBack={goToDashboard} />
     }
 
     return (
