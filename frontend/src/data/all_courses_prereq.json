@@ -7536,7 +7536,7 @@
     "distribution": "Science",
     "hours": "24L/12T",
     "delivery_mode": "In Class, Hybrid",
-    "prerequisites_parsed": null
+    "prerequisites_parsed": ["or", "CSC111H5", ["and", "CSC148H5", "MAT102H5"]]
   },
   {
     "code": "CSC258H5",
