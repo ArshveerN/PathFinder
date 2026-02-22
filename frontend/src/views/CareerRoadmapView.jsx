@@ -1,10 +1,6 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import './CareerRoadmapView.css'
 
-/**
- * Extract the course level index from a course code.
- * e.g. BIO152H5 -> 1 (100-level -> index 0), CSC207H5 -> 2 (200-level -> index 1)
- */
 function getCourseLevel(code) {
   const match = code.match(/\d+/)
   if (!match) return 0
@@ -12,13 +8,6 @@ function getCourseLevel(code) {
   return Math.max(0, Math.floor(num / 100) - 1)
 }
 
-/**
- * Assign each course a row based on:
- *  - prerequisite depth (how many prereq steps to reach it), AND
- *  - course level (100-level min row 0, 200-level min row 1, etc.)
- * The final row is max(prereqDepth, levelIndex), so a 200-level course is
- * NEVER placed above a 100-level course.
- */
 function buildColumns(courses) {
   const codeSet = new Set(courses.map(c => c.courseCode))
   const courseMap = new Map(courses.map(c => [c.courseCode, c]))
@@ -29,29 +18,18 @@ function buildColumns(courses) {
     if (depths.has(code)) return depths.get(code)
     if (computing.has(code)) return 0
     computing.add(code)
-
     const course = courseMap.get(code)
-    if (!course || course.requirements.length === 0) {
-      depths.set(code, 0)
-      return 0
-    }
-
+    if (!course || course.requirements.length === 0) { depths.set(code, 0); return 0 }
     const inPathReqs = course.requirements.filter(r => codeSet.has(r.code))
-    if (inPathReqs.length === 0) {
-      depths.set(code, 0)
-      return 0
-    }
-
+    if (inPathReqs.length === 0) { depths.set(code, 0); return 0 }
     const maxReq = Math.max(...inPathReqs.map(r => getPrereqDepth(r.code)))
     const d = maxReq + 1
     depths.set(code, d)
     return d
   }
 
-  // compute prereq depths
   courses.forEach(c => getPrereqDepth(c.courseCode))
 
-  // initial row: ensure minimum row respects course level
   const finalRows = new Map()
   courses.forEach(c => {
     const prereqRow = depths.get(c.courseCode) || 0
@@ -59,39 +37,31 @@ function buildColumns(courses) {
     finalRows.set(c.courseCode, Math.max(prereqRow, levelRow))
   })
 
-  // Build edges: for each course, connect its in-path prereqs to it
   const edges = []
   courses.forEach(c => {
     c.requirements.forEach(req => {
-      if (codeSet.has(req.code)) {
-        edges.push({ from: req.code, to: c.courseCode, type: req.type })
-      }
+      if (codeSet.has(req.code)) edges.push({ from: req.code, to: c.courseCode, type: req.type })
     })
   })
 
-  // Enforce prerequisite ordering: for every edge from -> to, require row(from) < row(to)
-  // Iterate until stable (bounded iterations)
+  // Enforce prerequisite ordering
   for (let iter = 0; iter < 20; iter++) {
     let changed = false
     edges.forEach(e => {
       const fromR = finalRows.get(e.from) || 0
       const toR = finalRows.get(e.to) || 0
-      if (fromR >= toR) {
-        finalRows.set(e.to, fromR + 1)
-        changed = true
-      }
+      if (fromR >= toR) { finalRows.set(e.to, fromR + 1); changed = true }
     })
     if (!changed) break
   }
 
-  // Enforce level ordering: ensure all rows for level L are strictly above level L+1
+  // Enforce level ordering
   const levels = new Map()
   courses.forEach(c => {
     const lvl = getCourseLevel(c.courseCode)
     if (!levels.has(lvl)) levels.set(lvl, [])
     levels.get(lvl).push(c.courseCode)
   })
-
   const maxLevel = Math.max(...Array.from(levels.keys(), v => v), 0)
   let maxAssigned = -1
   for (let lvl = 0; lvl <= maxLevel; lvl++) {
@@ -100,230 +70,237 @@ function buildColumns(courses) {
     const minRow = Math.min(...codes.map(code => finalRows.get(code) || 0))
     if (minRow <= maxAssigned) {
       const delta = maxAssigned - minRow + 1
-      // shift all courses at this level and higher
       courses.forEach(c => {
-        if (getCourseLevel(c.courseCode) >= lvl) {
+        if (getCourseLevel(c.courseCode) >= lvl)
           finalRows.set(c.courseCode, (finalRows.get(c.courseCode) || 0) + delta)
-        }
       })
     }
     const maxRowThis = Math.max(...codes.map(code => finalRows.get(code) || 0))
     maxAssigned = Math.max(maxAssigned, maxRowThis)
   }
 
-  // final pass: re-apply prerequisite ordering to fix any regressions
+  // Re-apply prerequisite ordering
   for (let iter = 0; iter < 10; iter++) {
     let changed = false
     edges.forEach(e => {
       const fromR = finalRows.get(e.from) || 0
       const toR = finalRows.get(e.to) || 0
-      if (fromR >= toR) {
-        finalRows.set(e.to, fromR + 1)
-        changed = true
-      }
+      if (fromR >= toR) { finalRows.set(e.to, fromR + 1); changed = true }
     })
     if (!changed) break
   }
 
-  // Group into rows
   const maxRow = Math.max(...Array.from(finalRows.values()), 0)
   const columns = []
   for (let i = 0; i <= maxRow; i++) columns.push([])
-  courses.forEach(c => {
-    const row = finalRows.get(c.courseCode) || 0
-    columns[row].push(c)
-  })
+  courses.forEach(c => { columns[finalRows.get(c.courseCode) || 0].push(c) })
 
   return { columns, edges, finalRows }
 }
 
-const NODE_W = 140
-const NODE_H = 52
-// horizontal gap between nodes (reduced to tighten layout)
-const COL_GAP = 64
-// increase row gap for more vertical spacing
-const ROW_GAP = 72
-// left/right padding around the graph
-const PAD_LEFT = 24
-// increase top padding so first row sits lower
-const PAD_TOP = 64
+// ── Base layout constants (at zoom = 1) ──
+const B_NODE_W = 140
+const B_NODE_H = 52
+const B_COL_GAP = 64
+const B_ROW_GAP = 72
+const B_PAD_LEFT = 24
+const B_PAD_TOP = 64
+const B_FONT = 12.5
+
+const ZOOM_MIN = 0.3
+const ZOOM_MAX = 2.0
+const ZOOM_STEP = 0.15
 
 function CareerRoadmapView({ career, coursesWithRequirements, onBack }) {
   const [selectedNode, setSelectedNode] = useState(null)
-  const svgRef = useRef(null)
   const containerRef = useRef(null)
-  const [positions, setPositions] = useState(new Map())
-  const [containerWidth, setContainerWidth] = useState(0)
+  const [zoom, setZoom] = useState(1)
+  const [pan, setPan] = useState({ x: 0, y: 0 })
+  const [isPanning, setIsPanning] = useState(false)
+  const panStart = useRef({ x: 0, y: 0, panX: 0, panY: 0 })
 
-  // Track the scroll container width so we can scale the canvas to fit
-  useEffect(() => {
-    const el = containerRef.current
-    if (!el) return
-    setContainerWidth(el.clientWidth)
-    const ro = new ResizeObserver(entries => {
-      for (const entry of entries) {
-        setContainerWidth(entry.contentRect.width)
-      }
-    })
-    ro.observe(el)
-    return () => ro.disconnect()
-  }, [])
+  const { columns, edges } = useMemo(() => buildColumns(coursesWithRequirements), [coursesWithRequirements])
+  const pathCodes = useMemo(() => new Set(coursesWithRequirements.map(c => c.courseCode)), [coursesWithRequirements])
 
-  const { columns, edges } = useMemo(
-    () => buildColumns(coursesWithRequirements),
-    [coursesWithRequirements]
-  )
-
-  // SVG marker IDs for arrowheads
-  const MARKER_DEFAULT = 'arrow-default'
-  const MARKER_HIGHLIGHT = 'arrow-highlight'
-
-  const pathCodes = useMemo(
-    () => new Set(coursesWithRequirements.map(c => c.courseCode)),
-    [coursesWithRequirements]
-  )
-
-  // Calculate positions for each node (vertical layout: rows = depth)
-  const nodePositions = useMemo(() => {
+  // ── Compute BASE positions (zoom=1) with relaxation ──
+  const { basePositions, baseW, baseH } = useMemo(() => {
     const pos = new Map()
-    // max width (number of nodes in the widest row)
     const maxColsLen = Math.max(0, ...columns.map(c => c.length))
+    const maxRowWidth = maxColsLen * B_NODE_W + Math.max(0, (maxColsLen - 1)) * B_COL_GAP
 
-    // compute the maximum row width in px
-    const maxRowWidth = maxColsLen * NODE_W + Math.max(0, (maxColsLen - 1)) * COL_GAP
-
-    // initial placement: center each row
     columns.forEach((row, rowIdx) => {
-      const rowY = PAD_TOP + rowIdx * (NODE_H + ROW_GAP)
-      const totalWidth = row.length * NODE_W + Math.max(0, (row.length - 1)) * COL_GAP
-      const startX = PAD_LEFT + (maxRowWidth - totalWidth) / 2
-
+      const rowY = B_PAD_TOP + rowIdx * (B_NODE_H + B_ROW_GAP)
+      const totalWidth = row.length * B_NODE_W + Math.max(0, (row.length - 1)) * B_COL_GAP
+      const startX = B_PAD_LEFT + (maxRowWidth - totalWidth) / 2
       row.forEach((course, colIdx) => {
-        pos.set(course.courseCode, {
-          x: startX + colIdx * (NODE_W + COL_GAP),
-          y: rowY,
-        })
+        pos.set(course.courseCode, { x: startX + colIdx * (B_NODE_W + B_COL_GAP), y: rowY })
       })
     })
 
-    // build parent map for alignment (to -> [from])
+    // Parent map
     const parentMap = new Map()
     edges.forEach(e => {
       if (!parentMap.has(e.to)) parentMap.set(e.to, [])
       parentMap.get(e.to).push(e.from)
     })
+    const cx = (code) => pos.get(code).x + B_NODE_W / 2
 
-    const centerX = (code) => pos.get(code).x + NODE_W / 2
-
-    // relaxation: align nodes under parents and resolve collisions per row
-    const ITER = 6
-    for (let it = 0; it < ITER; it++) {
-      // align towards parent centroid
+    // Relaxation
+    for (let it = 0; it < 6; it++) {
       pos.forEach((v, code) => {
         const parents = parentMap.get(code) || []
         if (parents.length === 0) return
-        const avg = parents.reduce((s, p) => s + centerX(p), 0) / parents.length - NODE_W / 2
-        // move fractionally towards average to keep stability
+        const avg = parents.reduce((s, p) => s + cx(p), 0) / parents.length - B_NODE_W / 2
         v.x = v.x + (avg - v.x) * 0.6
       })
-
-      // resolve collisions within each row
       columns.forEach((row) => {
-        // collect nodes in row and sort by x
-        const rowNodes = row.map(c => ({ code: c.courseCode, x: pos.get(c.courseCode).x }))
-          .sort((a, b) => a.x - b.x)
-
+        const rowNodes = row.map(c => ({ code: c.courseCode, x: pos.get(c.courseCode).x })).sort((a, b) => a.x - b.x)
         for (let i = 1; i < rowNodes.length; i++) {
-          const prev = rowNodes[i - 1]
-          const cur = rowNodes[i]
-          const minX = prev.x + NODE_W + Math.max(8, Math.floor(COL_GAP / 3))
-          if (cur.x < minX) {
-            const shift = minX - cur.x
-            // shift current and all following nodes to the right
-            for (let j = i; j < rowNodes.length; j++) {
-              pos.get(rowNodes[j].code).x += shift
-              rowNodes[j].x += shift
-            }
+          const minX = rowNodes[i - 1].x + B_NODE_W + Math.max(8, Math.floor(B_COL_GAP / 3))
+          if (rowNodes[i].x < minX) {
+            const shift = minX - rowNodes[i].x
+            for (let j = i; j < rowNodes.length; j++) { pos.get(rowNodes[j].code).x += shift; rowNodes[j].x += shift }
           }
         }
       })
     }
 
-    return pos
+    // Center
+    let gMinX = Infinity, gMaxX = -Infinity
+    pos.forEach(v => { gMinX = Math.min(gMinX, v.x); gMaxX = Math.max(gMaxX, v.x + B_NODE_W) })
+    if (!isFinite(gMinX)) { gMinX = 0; gMaxX = maxRowWidth + B_PAD_LEFT * 2 }
+    const graphW = gMaxX - gMinX
+    const cw = Math.max(maxRowWidth + B_PAD_LEFT * 2, graphW + B_PAD_LEFT * 2)
+    const shiftX = (cw - graphW) / 2 - gMinX
+    pos.forEach(v => { v.x += shiftX })
+
+    const ch = B_PAD_TOP * 2 + columns.length * B_NODE_H + Math.max(0, (columns.length - 1)) * B_ROW_GAP
+    return { basePositions: pos, baseW: cw, baseH: ch }
   }, [columns, edges])
 
-  // Total canvas size (width depends on min/max x after relaxation, height on number of rows)
-  let minX = Infinity, maxX = -Infinity
-  nodePositions.forEach((v) => {
-    minX = Math.min(minX, v.x)
-    maxX = Math.max(maxX, v.x + NODE_W)
-  })
-  if (!isFinite(minX)) {
-    minX = 0
-    // fallback width estimate
-    const fallbackMaxCols = Math.max(0, ...columns.map(c => c.length))
-    maxX = PAD_LEFT * 2 + fallbackMaxCols * NODE_W + Math.max(0, (fallbackMaxCols - 1)) * COL_GAP
-  }
-  const maxColsLen = Math.max(0, ...columns.map(c => c.length))
-  const naturalWidth = Math.max(PAD_LEFT * 2 + maxColsLen * NODE_W + Math.max(0, (maxColsLen - 1)) * COL_GAP, Math.ceil(maxX - minX + PAD_LEFT * 2))
-  const canvasWidth = naturalWidth
-
-  // Compute graph bounding box and scale so the graph exactly fits the available container width
-  const graphMin = minX
-  const graphMax = maxX
-  const graphWidth = Math.max(0, graphMax - graphMin)
-  const H_MARGIN = PAD_LEFT // left/right margin inside viewport
-  const scale = containerWidth > 0
-    ? containerWidth / Math.max(1, (graphWidth + H_MARGIN * 2))
-    : 1
-  // translation (in natural px) so that after scaling the graphMin maps to H_MARGIN
-  // (minX + tx) * scale = H_MARGIN  => tx = H_MARGIN / scale - minX
-  const tx = isFinite(graphMin) ? (H_MARGIN / Math.max(scale, 1e-6) - graphMin) : 0
-  const canvasHeight = PAD_TOP * 2 + columns.length * NODE_H + Math.max(0, (columns.length - 1)) * ROW_GAP
-
-  // Get the selected course's details
-  const selectedCourse = useMemo(() => {
-    if (!selectedNode) return null
-    return coursesWithRequirements.find(c => c.courseCode === selectedNode)
-  }, [selectedNode, coursesWithRequirements])
-
-  // compute ancestors (prereq chain) for the selected node
+  // ── Ancestor chain for highlighting ──
   const { ancestorNodes, ancestorEdges } = useMemo(() => {
     if (!selectedNode) return { ancestorNodes: new Set(), ancestorEdges: new Set() }
-
-    // build reverse adjacency: to -> [from]
     const rev = new Map()
     edges.forEach(e => {
       if (!rev.has(e.to)) rev.set(e.to, [])
       rev.get(e.to).push(e.from)
     })
-
     const nodes = new Set()
     const edgeSet = new Set()
     const stack = [selectedNode]
-
     while (stack.length) {
       const cur = stack.pop()
-      const froms = rev.get(cur) || []
-      froms.forEach(f => {
-        if (!nodes.has(f)) {
-          nodes.add(f)
-          stack.push(f)
-        }
+      ;(rev.get(cur) || []).forEach(f => {
+        if (!nodes.has(f)) { nodes.add(f); stack.push(f) }
         edgeSet.add(`${f}->${cur}`)
       })
     }
-
     return { ancestorNodes: nodes, ancestorEdges: edgeSet }
   }, [selectedNode, edges])
 
+  // ── Zoomed sizes (native resolution) ──
+  const nw = B_NODE_W * zoom
+  const nh = B_NODE_H * zoom
+  const fontSize = B_FONT * zoom
+  const canvasW = baseW * zoom
+  const canvasH = baseH * zoom
+
+  const nodePositions = useMemo(() => {
+    const zp = new Map()
+    basePositions.forEach((v, code) => { zp.set(code, { x: v.x * zoom, y: v.y * zoom }) })
+    return zp
+  }, [basePositions, zoom])
+
+  // ── Fit on load ──
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el || baseW === 0) return
+    const vw = el.clientWidth
+    const vh = el.clientHeight
+    const fz = Math.max(ZOOM_MIN, Math.min(1, Math.min((vw - 60) / baseW, (vh - 60) / baseH)))
+    setZoom(fz)
+    setPan({ x: (vw - baseW * fz) / 2, y: 20 })
+  }, [baseW, baseH])
+
+  // ── Ctrl+Scroll zoom (centered on cursor) ──
+  const handleWheel = useCallback((e) => {
+    if (!e.ctrlKey && !e.metaKey) return
+    e.preventDefault()
+    const rect = containerRef.current.getBoundingClientRect()
+    const mx = e.clientX - rect.left
+    const my = e.clientY - rect.top
+    setZoom(prev => {
+      const delta = e.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP
+      const nz = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, prev + delta))
+      const ratio = nz / prev
+      setPan(p => ({ x: mx - ratio * (mx - p.x), y: my - ratio * (my - p.y) }))
+      return nz
+    })
+  }, [])
+
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    el.addEventListener('wheel', handleWheel, { passive: false })
+    return () => el.removeEventListener('wheel', handleWheel)
+  }, [handleWheel])
+
+  // ── Mouse pan ──
+  const handleMouseDown = useCallback((e) => {
+    if (e.button === 1 || (e.button === 0 && !e.target.closest('.flow-node'))) {
+      e.preventDefault()
+      setIsPanning(true)
+      panStart.current = { x: e.clientX, y: e.clientY, panX: pan.x, panY: pan.y }
+    }
+  }, [pan])
+
+  const handleMouseMove = useCallback((e) => {
+    if (!isPanning) return
+    setPan({ x: panStart.current.panX + (e.clientX - panStart.current.x), y: panStart.current.panY + (e.clientY - panStart.current.y) })
+  }, [isPanning])
+
+  const handleMouseUp = useCallback(() => setIsPanning(false), [])
+
+  useEffect(() => {
+    if (!isPanning) return
+    window.addEventListener('mousemove', handleMouseMove)
+    window.addEventListener('mouseup', handleMouseUp)
+    return () => { window.removeEventListener('mousemove', handleMouseMove); window.removeEventListener('mouseup', handleMouseUp) }
+  }, [isPanning, handleMouseMove, handleMouseUp])
+
+  const zoomTo = (newZoom) => {
+    const el = containerRef.current
+    const cx = el.clientWidth / 2, cy = el.clientHeight / 2
+    const nz = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, newZoom))
+    const ratio = nz / zoom
+    setPan(p => ({ x: cx - ratio * (cx - p.x), y: cy - ratio * (cy - p.y) }))
+    setZoom(nz)
+  }
+
+  const zoomFit = () => {
+    const el = containerRef.current
+    if (!el) return
+    const vw = el.clientWidth, vh = el.clientHeight
+    const fz = Math.max(ZOOM_MIN, Math.min(1, Math.min((vw - 60) / baseW, (vh - 60) / baseH)))
+    setZoom(fz)
+    setPan({ x: (vw - baseW * fz) / 2, y: Math.max(20, (vh - baseH * fz) / 2) })
+  }
+
+  const selectedCourse = useMemo(() => {
+    if (!selectedNode) return null
+    return coursesWithRequirements.find(c => c.courseCode === selectedNode)
+  }, [selectedNode, coursesWithRequirements])
+
+  // Stroke widths scaled
+  const sw = 1.6 * zoom
+  const swHL = 2.6 * zoom
+
   return (
     <div className="rm-container" onClick={(e) => {
-      if (!e.target.closest('.flow-node') && !e.target.closest('.flow-detail-panel')) {
+      if (!e.target.closest('.flow-node') && !e.target.closest('.flow-detail-panel') && !e.target.closest('.zoom-controls'))
         setSelectedNode(null)
-      }
     }}>
-      {/* Header */}
       <div className="rm-header">
         <div className="rm-header-left">
           <button className="rm-back" onClick={onBack}>← Back</button>
@@ -332,7 +309,6 @@ function CareerRoadmapView({ career, coursesWithRequirements, onBack }) {
         <span className="rm-count">{coursesWithRequirements.length} courses</span>
       </div>
 
-      {/* Legend */}
       <div className="rm-legend">
         <div className="rm-legend-item">
           <div className="legend-swatch legend-start">BIO</div>
@@ -348,130 +324,95 @@ function CareerRoadmapView({ career, coursesWithRequirements, onBack }) {
           <div className="legend-swatch legend-selected">↑</div>
           <span>Selected &amp; ancestors</span>
         </div>
-        <span style={{ marginLeft: 'auto', fontSize: '11px', color: '#94a3b8', fontStyle: 'italic' }}>
-          Click any course for details
-        </span>
+        <span className="rm-legend-hint">Ctrl+Scroll to zoom · Drag to pan</span>
       </div>
 
-      {/* Main content: flowchart + detail panel */}
       <div className="flow-layout">
-        {/* Scrollable flowchart */}
-        <div className="flow-scroll" ref={containerRef}>
-          {/* Sizer: occupies the scaled height so the scrollbar is correct */}
-          <div style={{ width: '100%', position: 'relative', height: canvasHeight * scale, display: 'flex', justifyContent: 'flex-start' }}>
-          {/* Canvas: full natural size but visually scaled to fit container; positioned via translateX so left/right edges align */}
-          <div className="flow-canvas" style={{ width: canvasWidth, height: canvasHeight, position: 'relative', transform: `translateX(${tx}px) scale(${scale})`, transformOrigin: 'top left' }}>
-            {/* SVG lines */}
-            <svg
-              ref={svgRef}
-              className="flow-svg"
-              width={canvasWidth}
-              height={canvasHeight}
-            >
+        <div
+          className={`flow-scroll ${isPanning ? 'flow-scroll-grabbing' : ''}`}
+          ref={containerRef}
+          onMouseDown={handleMouseDown}
+        >
+          {/* Zoom controls */}
+          <div className="zoom-controls">
+            <button className="zoom-btn" onClick={() => zoomTo(zoom + ZOOM_STEP)}>+</button>
+            <span className="zoom-level">{Math.round(zoom * 100)}%</span>
+            <button className="zoom-btn" onClick={() => zoomTo(zoom - ZOOM_STEP)}>−</button>
+            <button className="zoom-btn zoom-btn-fit" onClick={zoomFit}>Fit</button>
+          </div>
+
+          {/* Canvas: translate only for pan, sizes are natively scaled */}
+          <div className="flow-canvas" style={{ width: canvasW, height: canvasH, transform: `translate(${pan.x}px, ${pan.y}px)` }}>
+            <svg className="flow-svg" width={canvasW} height={canvasH}>
               <defs>
-                <marker id={MARKER_DEFAULT} markerWidth="10" markerHeight="10" refX="8" refY="3.5" orient="auto" markerUnits="strokeWidth">
+                <marker id="arrow-default" markerWidth="10" markerHeight="10" refX="8" refY="3.5" orient="auto" markerUnits="strokeWidth">
                   <path d="M0,0.5 L0,6.5 L8,3.5 z" fill="#9ca3af" />
                 </marker>
-                <marker id={MARKER_HIGHLIGHT} markerWidth="10" markerHeight="10" refX="8" refY="3.5" orient="auto" markerUnits="strokeWidth">
+                <marker id="arrow-highlight" markerWidth="10" markerHeight="10" refX="8" refY="3.5" orient="auto" markerUnits="strokeWidth">
                   <path d="M0,0.5 L0,6.5 L8,3.5 z" fill="#3b82f6" />
                 </marker>
               </defs>
-              {/* Draw non-highlighted edges first, then draw highlighted edges on top */}
-              {edges.filter(e => {
-                const key = `${e.from}->${e.to}`
-                return !(selectedNode && ancestorEdges.has(key))
-              }).map((edge, i) => {
-                const fromPos = nodePositions.get(edge.from)
-                const toPos = nodePositions.get(edge.to)
-                if (!fromPos || !toPos) return null
 
-                const x1 = fromPos.x + NODE_W / 2
-                const y1 = fromPos.y + NODE_H
-                const x2 = toPos.x + NODE_W / 2
-                const y2 = toPos.y - 1
-
+              {/* Non-highlighted edges */}
+              {edges.filter(e => !(selectedNode && ancestorEdges.has(`${e.from}->${e.to}`))).map((edge, i) => {
+                const fp = nodePositions.get(edge.from), tp = nodePositions.get(edge.to)
+                if (!fp || !tp) return null
+                const x1 = fp.x + nw / 2, y1 = fp.y + nh
+                const x2 = tp.x + nw / 2, y2 = tp.y - 1 * zoom
                 const dy = y2 - y1
-                const bend = Math.max(28, Math.min(dy * 0.42, 64))
-                const d = `M ${x1} ${y1} C ${x1} ${y1 + bend}, ${x2} ${y2 - bend}, ${x2} ${y2}`
-
+                const bend = Math.max(28 * zoom, Math.min(dy * 0.42, 64 * zoom))
                 return (
-                  <path
-                    key={`edge-${i}`}
-                    d={d}
-                    fill="none"
-                    stroke="#c8cfd8"
-                    strokeWidth={1.6}
-                    strokeLinecap="round"
-                    markerEnd={`url(#${MARKER_DEFAULT})`}
-                  />
+                  <path key={`e-${i}`}
+                    d={`M ${x1} ${y1} C ${x1} ${y1 + bend}, ${x2} ${y2 - bend}, ${x2} ${y2}`}
+                    fill="none" stroke="#c8cfd8" strokeWidth={sw} strokeLinecap="round"
+                    markerEnd="url(#arrow-default)" />
                 )
               })}
 
-              {edges.filter(e => {
-                const key = `${e.from}->${e.to}`
-                return selectedNode && ancestorEdges.has(key)
-              }).map((edge, i) => {
-                const fromPos = nodePositions.get(edge.from)
-                const toPos = nodePositions.get(edge.to)
-                if (!fromPos || !toPos) return null
-
-                const x1 = fromPos.x + NODE_W / 2
-                const y1 = fromPos.y + NODE_H
-                const x2 = toPos.x + NODE_W / 2
-                const y2 = toPos.y - 1
-
+              {/* Highlighted edges on top */}
+              {edges.filter(e => selectedNode && ancestorEdges.has(`${e.from}->${e.to}`)).map((edge, i) => {
+                const fp = nodePositions.get(edge.from), tp = nodePositions.get(edge.to)
+                if (!fp || !tp) return null
+                const x1 = fp.x + nw / 2, y1 = fp.y + nh
+                const x2 = tp.x + nw / 2, y2 = tp.y - 1 * zoom
                 const dy = y2 - y1
-                const bend = Math.max(28, Math.min(dy * 0.42, 64))
-                const d = `M ${x1} ${y1} C ${x1} ${y1 + bend}, ${x2} ${y2 - bend}, ${x2} ${y2}`
-
+                const bend = Math.max(28 * zoom, Math.min(dy * 0.42, 64 * zoom))
                 return (
-                  <path
-                    key={`edge-highlight-${i}`}
-                    d={d}
-                    fill="none"
-                    stroke="#3b82f6"
-                    strokeWidth={2.6}
-                    strokeLinecap="round"
-                    markerEnd={`url(#${MARKER_HIGHLIGHT})`}
-                  />
+                  <path key={`hl-${i}`}
+                    d={`M ${x1} ${y1} C ${x1} ${y1 + bend}, ${x2} ${y2 - bend}, ${x2} ${y2}`}
+                    fill="none" stroke="#3b82f6" strokeWidth={swHL} strokeLinecap="round"
+                    markerEnd="url(#arrow-highlight)" />
                 )
               })}
             </svg>
 
-            {/* Course nodes */}
-            {columns.map((col, colIdx) =>
+            {/* Nodes */}
+            {columns.map((col) =>
               col.map((course) => {
                 const pos = nodePositions.get(course.courseCode)
                 if (!pos) return null
                 const hasPrereqs = course.requirements.length > 0
                 const isSelected = selectedNode === course.courseCode
                 const inAncestorPath = ancestorNodes.has(course.courseCode) || isSelected
-
                 return (
-                  <div
-                    key={course.courseCode}
+                  <div key={course.courseCode}
                     className={`flow-node ${!hasPrereqs ? 'flow-node-start' : ''} ${isSelected ? 'flow-node-selected' : ''} ${inAncestorPath ? 'flow-node-path' : ''}`}
                     style={{
-                      left: pos.x,
-                      top: pos.y,
-                      width: NODE_W,
-                      height: NODE_H,
+                      left: pos.x, top: pos.y, width: nw, height: nh,
+                      borderRadius: 10 * zoom,
+                      borderWidth: (isSelected || !hasPrereqs) ? 2 * zoom : 1.5 * zoom,
                     }}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setSelectedNode(prev => prev === course.courseCode ? null : course.courseCode)
-                    }}
+                    onClick={(e) => { e.stopPropagation(); setSelectedNode(prev => prev === course.courseCode ? null : course.courseCode) }}
                   >
-                    <span className="flow-node-code">{course.courseCode}</span>
+                    <span className="flow-node-code" style={{ fontSize }}>{course.courseCode}</span>
                   </div>
                 )
               })
             )}
           </div>
-          </div>
         </div>
 
-        {/* Detail panel (right side) */}
+        {/* Detail panel */}
         {selectedCourse && (
           <div className="flow-detail-panel">
             <div className="fdp-header">
@@ -518,7 +459,6 @@ function CareerRoadmapView({ career, coursesWithRequirements, onBack }) {
               </div>
             )}
 
-            {/* Unlocks section */}
             {(() => {
               const unlocks = edges.filter(e => e.from === selectedCourse.courseCode)
               if (unlocks.length === 0) return null
