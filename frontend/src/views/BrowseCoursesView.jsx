@@ -60,6 +60,30 @@ function CourseCard({ course }) {
 }
 
 function BrowseCoursesView({ courses, loading, error, onBack }) {
+  const [searchTerm, setSearchTerm] = useState('')
+  const [levelFilter, setLevelFilter] = useState('All')
+
+  const filteredCourses = courses.filter((course) => {
+    const code = (course['Course Code'] || '').toLowerCase()
+    const name = (course.Name || '').toLowerCase()
+    const searchLower = searchTerm.toLowerCase()
+
+    const matchesSearch = code.includes(searchLower) || name.includes(searchLower)
+
+    let matchesLevel = true
+    if (levelFilter !== 'All') {
+      const match = (course['Course Code'] || '').match(/^[a-zA-Z]+(\d)/)
+      if (match) {
+        const level = match[1] + '00' 
+        matchesLevel = level === levelFilter
+      } else {
+        matchesLevel = false
+      }
+    }
+
+    return matchesSearch && matchesLevel
+  })
+
   return (
     <div className="bc-container">
       <div className="bc-header">
@@ -67,10 +91,33 @@ function BrowseCoursesView({ courses, loading, error, onBack }) {
           <button className="bc-back" onClick={onBack}>← Back</button>
           <h1 className="bc-title">All Courses</h1>
         </div>
-        <span className="bc-count">{courses.length} courses</span>
+        <span className="bc-count">Showing {filteredCourses.length} of {courses.length} courses</span>
       </div>
 
       <div className="bc-content">
+        
+
+        <div className="bc-controls">
+          <input 
+            type="text" 
+            placeholder="Search by course code or name (e.g. CSC, Anthropology)..." 
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="bc-search-input"
+          />
+          <select 
+            value={levelFilter} 
+            onChange={(e) => setLevelFilter(e.target.value)}
+            className="bc-level-select"
+          >
+            <option value="All">All Levels</option>
+            <option value="100">100 Level</option>
+            <option value="200">200 Level</option>
+            <option value="300">300 Level</option>
+            <option value="400">400 Level</option>
+          </select>
+        </div>
+
         {loading && (
           <div className="bc-status">
             <div className="bc-spinner" />
@@ -81,11 +128,17 @@ function BrowseCoursesView({ courses, loading, error, onBack }) {
         {error && <div className="bc-error">⚠ {error}</div>}
 
         {!loading && !error && (
-          <div className="bc-grid">
-            {courses.map((c, i) => (
-              <CourseCard key={c['Course Code'] || i} course={c} />
-            ))}
-          </div>
+          <>
+            {filteredCourses.length === 0 ? (
+               <div className="bc-status">No courses found matching your criteria.</div>
+            ) : (
+              <div className="bc-grid">
+                {filteredCourses.map((c, i) => (
+                  <CourseCard key={c['Course Code'] || i} course={c} />
+                ))}
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
