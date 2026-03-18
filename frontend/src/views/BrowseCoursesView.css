@@ -264,13 +264,36 @@
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
 }
 
+/* ── Load More ── */
+.bc-load-more-wrapper {
+  display: flex;
+  justify-content: center;
+  padding: 32px 0 16px;
+}
+
+.bc-load-more {
+  padding: 12px 32px;
+  background: #3b82f6;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.bc-load-more:hover {
+  background: #2563eb;
+}
+
 /* ── Responsive controls ── */
 @media (max-width: 768px) {
   .bc-controls {
     flex-direction: column;
     gap: 12px;
   }
-  
+
   .bc-level-select {
     width: 100%;
   }
