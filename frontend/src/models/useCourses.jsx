@@ -11,7 +11,10 @@ async function fetchAllCourses() {
   while (true) {
     const { data, error } = await supabase
       .from('Courses')
-      .select('*')
+      .select(`
+        *,
+        course_rating_stats(average_rating, total_reviews)
+      `)
       .range(from, from + PAGE_SIZE - 1)
 
     if (error) throw new Error(error.message)
@@ -28,6 +31,15 @@ export function CoursesProvider({ children }) {
   const [courses, setCourses] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+
+  const refreshCourses = async () => {
+    try {
+      const data = await fetchAllCourses()
+      setCourses(data)
+    } catch (err) {
+      setError(err.message || String(err))
+    }
+  }
 
   useEffect(() => {
     let mounted = true
@@ -47,7 +59,7 @@ export function CoursesProvider({ children }) {
   }, [])
 
   return (
-    <CoursesContext.Provider value={{ courses, loading, error }}>
+    <CoursesContext.Provider value={{ courses, loading, error, refreshCourses }}>
       {children}
     </CoursesContext.Provider>
   )

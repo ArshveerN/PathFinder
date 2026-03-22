@@ -298,3 +298,51 @@
     width: 100%;
   }
 }
+
+/* ── Reviews Section ── */
+.bc-reviews-section {
+  margin-top: 4px;
+}
+
+.bc-reviews-section h4 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 12px 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.bc-reviews-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.bc-review-item {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+
+.bc-review-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.bc-review-date {
+  font-size: 0.78em;
+  color: #9ca3af;
+  white-space: nowrap;
+}
+
+.bc-review-text {
+  margin: 0;
+  font-size: 0.88em;
+  color: #374151;
+  line-height: 1.5;
+}
