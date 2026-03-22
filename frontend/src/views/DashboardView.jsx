@@ -1,6 +1,6 @@
 import '../App.css'
 
-function DashboardView({ message, onSectionClick, onDashboardClick }) {
+function DashboardView({ message, onSectionClick, onDashboardClick, onLogout }) {
   return (
     <div className="app">
       <header className="header">
@@ -9,6 +9,9 @@ function DashboardView({ message, onSectionClick, onDashboardClick }) {
 
       <nav className="nav">
         <button onClick={onDashboardClick}>Dashboard</button>
+        {onLogout && (
+          <button onClick={onLogout} style={{ marginLeft: 'auto' }}>Logout</button>
+        )}
       </nav>
 
       <div className="dashboard">

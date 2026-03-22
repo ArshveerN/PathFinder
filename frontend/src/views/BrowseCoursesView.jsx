@@ -1,5 +1,7 @@
-import { useState } from 'react'
+import { useState, useMemo, useCallback, useEffect, memo } from 'react'
 import './BrowseCoursesView.css'
+
+const PAGE_SIZE = 40
 
 const DIST_COLORS = {
   'Science': { bg: '#ecfdf5', text: '#065f46' },
@@ -7,7 +9,7 @@ const DIST_COLORS = {
   'Humanities': { bg: '#fef2f2', text: '#991b1b' },
 }
 
-function CourseCard({ course }) {
+const CourseCard = memo(function CourseCard({ course }) {
   const [expanded, setExpanded] = useState(false)
   const dist = DIST_COLORS[course.Distribution] || { bg: '#f3f4f6', text: '#4b5563' }
 
@@ -57,32 +59,52 @@ function CourseCard({ course }) {
       </span>
     </div>
   )
-}
+})
 
 function BrowseCoursesView({ courses, loading, error, onBack }) {
   const [searchTerm, setSearchTerm] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [levelFilter, setLevelFilter] = useState('All')
+  const [page, setPage] = useState(1)
 
-  const filteredCourses = courses.filter((course) => {
-    const code = (course['Course Code'] || '').toLowerCase()
-    const name = (course.Name || '').toLowerCase()
-    const searchLower = searchTerm.toLowerCase()
+  // Debounce search input by 250ms
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm)
+      setPage(1)
+    }, 250)
+    return () => clearTimeout(timer)
+  }, [searchTerm])
 
-    const matchesSearch = code.includes(searchLower) || name.includes(searchLower)
+  // Reset page when filter changes
+  const handleLevelChange = useCallback((e) => {
+    setLevelFilter(e.target.value)
+    setPage(1)
+  }, [])
 
-    let matchesLevel = true
-    if (levelFilter !== 'All') {
-      const match = (course['Course Code'] || '').match(/^[a-zA-Z]+(\d)/)
-      if (match) {
-        const level = match[1] + '00' 
-        matchesLevel = level === levelFilter
-      } else {
-        matchesLevel = false
+  const filteredCourses = useMemo(() => {
+    const searchLower = debouncedSearch.toLowerCase()
+
+    return courses.filter((course) => {
+      const code = (course['Course Code'] || '').toLowerCase()
+      const name = (course.Name || '').toLowerCase()
+
+      if (searchLower && !code.includes(searchLower) && !name.includes(searchLower)) {
+        return false
       }
-    }
 
-    return matchesSearch && matchesLevel
-  })
+      if (levelFilter !== 'All') {
+        const match = (course['Course Code'] || '').match(/^[a-zA-Z]+(\d)/)
+        if (!match || match[1] + '00' !== levelFilter) return false
+      }
+
+      return true
+    })
+  }, [courses, debouncedSearch, levelFilter])
+
+  const totalPages = Math.ceil(filteredCourses.length / PAGE_SIZE)
+  const visibleCourses = filteredCourses.slice(0, page * PAGE_SIZE)
+  const hasMore = page < totalPages
 
   return (
     <div className="bc-container">
@@ -91,23 +113,21 @@ function BrowseCoursesView({ courses, loading, error, onBack }) {
           <button className="bc-back" onClick={onBack}>← Back</button>
           <h1 className="bc-title">All Courses</h1>
         </div>
-        <span className="bc-count">Showing {filteredCourses.length} of {courses.length} courses</span>
+        <span className="bc-count">Showing {visibleCourses.length} of {filteredCourses.length} courses</span>
       </div>
 
       <div className="bc-content">
-        
-
         <div className="bc-controls">
-          <input 
-            type="text" 
-            placeholder="Search by course code or name (e.g. CSC, Anthropology)..." 
+          <input
+            type="text"
+            placeholder="Search by course code or name (e.g. CSC, Anthropology)..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="bc-search-input"
           />
-          <select 
-            value={levelFilter} 
-            onChange={(e) => setLevelFilter(e.target.value)}
+          <select
+            value={levelFilter}
+            onChange={handleLevelChange}
             className="bc-level-select"
           >
             <option value="All">All Levels</option>
@@ -132,11 +152,20 @@ function BrowseCoursesView({ courses, loading, error, onBack }) {
             {filteredCourses.length === 0 ? (
                <div className="bc-status">No courses found matching your criteria.</div>
             ) : (
-              <div className="bc-grid">
-                {filteredCourses.map((c, i) => (
-                  <CourseCard key={c['Course Code'] || i} course={c} />
-                ))}
-              </div>
+              <>
+                <div className="bc-grid">
+                  {visibleCourses.map((c, i) => (
+                    <CourseCard key={c['Course Code'] || i} course={c} />
+                  ))}
+                </div>
+                {hasMore && (
+                  <div className="bc-load-more-wrapper">
+                    <button className="bc-load-more" onClick={() => setPage(p => p + 1)}>
+                      Load more courses ({filteredCourses.length - visibleCourses.length} remaining)
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </>
         )}
