@@ -9,9 +9,23 @@ function QandAView({
   error,
   posts,
   loadingPosts,
+  expandedPostId,
+  answers,
+  loadingAnswers,
+  answerName,
+  answerText,
+  submittingAnswer,
+  voteHistory,
+  answerVoteHistory,
   onNameChange,
   onQuestionChange,
+  onAnswerNameChange,
+  onAnswerTextChange,
   onSubmit,
+  onVote,
+  onAnswerVote,
+  onToggleExpand,
+  onSubmitAnswer,
   onBack,
   onClearSuccess,
   onClearError,
@@ -36,15 +50,139 @@ function QandAView({
             <div className="feed-status">No questions yet. Be the first to ask!</div>
           )}
 
-          {posts.map((post) => (
-            <div key={post.id} className="post-card">
-              <div className="post-header">
-                <span className="post-author">{post.Name}</span>
-                <span className="post-date">{post.Data} · {post.Time}</span>
+          {posts.map((post) => {
+            const postId = post.Id ?? post.id
+            const isExpanded = expandedPostId === postId
+            const postAnswers = answers[postId] || []
+            const isLoadingAnswers = loadingAnswers[postId]
+            const userVote = voteHistory[postId] || null
+            // Use live count after expanded, pre-loaded count before first expand
+            const answerCount = answers[postId] !== undefined ? postAnswers.length : (post._answerCount ?? 0)
+
+            return (
+              <div key={postId} className={`post-card ${isExpanded ? 'post-card-expanded' : ''}`}>
+                <div className="post-row">
+                  {/* Vote column */}
+                  <div className="vote-col">
+                    <button
+                      className={`vote-btn vote-up ${userVote === 'up' ? 'vote-active-up' : ''}`}
+                      onClick={(e) => { e.stopPropagation(); onVote(postId, 'up') }}
+                      aria-label="Upvote"
+                    >
+                      ▲
+                    </button>
+                    <span className={`vote-count ${(post.Votes ?? post.votes ?? 0) > 0 ? 'vote-positive' : (post.Votes ?? post.votes ?? 0) < 0 ? 'vote-negative' : ''}`}>
+                      {post.Votes ?? post.votes ?? 0}
+                    </span>
+                    <button
+                      className={`vote-btn vote-down ${userVote === 'down' ? 'vote-active-down' : ''}`}
+                      onClick={(e) => { e.stopPropagation(); onVote(postId, 'down') }}
+                      aria-label="Downvote"
+                    >
+                      ▼
+                    </button>
+                  </div>
+
+                  {/* Post content */}
+                  <div className="post-content" onClick={() => onToggleExpand(postId)}>
+                    <div className="post-header">
+                      <span className="post-author">{post.Name}</span>
+                      <span className="post-date">{post.Data} · {post.Time}</span>
+                    </div>
+                    <div className="post-question">{post.Question}</div>
+                    <div className="post-meta">
+                      <span className="post-answers-count">
+                        {answerCount} {answerCount === 1 ? 'answer' : 'answers'}
+                      </span>
+                      <span className="post-expand-hint">
+                        {isExpanded ? 'Click to collapse' : 'Click to answer'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Expanded: answers + answer form */}
+                {isExpanded && (
+                  <div className="answers-section">
+                    <div className="answers-divider" />
+
+                    {isLoadingAnswers && (
+                      <div className="answers-loading">Loading answers...</div>
+                    )}
+
+                    {!isLoadingAnswers && postAnswers.length === 0 && (
+                      <div className="answers-empty">No answers yet. Be the first to respond!</div>
+                    )}
+
+                    {postAnswers.map((a) => {
+                      const answerId = a.Id ?? a.id
+                      const answerUserVote = answerVoteHistory[answerId] || null
+                      return (
+                        <div key={answerId} className="answer-card">
+                          <div className="answer-row">
+                            <div className="vote-col vote-col-sm">
+                              <button
+                                className={`vote-btn vote-up ${answerUserVote === 'up' ? 'vote-active-up' : ''}`}
+                                onClick={() => onAnswerVote(answerId, postId, 'up')}
+                                aria-label="Upvote answer"
+                              >
+                                ▲
+                              </button>
+                              <span className={`vote-count ${(a.Votes ?? a.votes ?? 0) > 0 ? 'vote-positive' : (a.Votes ?? a.votes ?? 0) < 0 ? 'vote-negative' : ''}`}>
+                                {a.Votes ?? a.votes ?? 0}
+                              </span>
+                              <button
+                                className={`vote-btn vote-down ${answerUserVote === 'down' ? 'vote-active-down' : ''}`}
+                                onClick={() => onAnswerVote(answerId, postId, 'down')}
+                                aria-label="Downvote answer"
+                              >
+                                ▼
+                              </button>
+                            </div>
+                            <div className="answer-content">
+                              <div className="answer-header">
+                                <span className="answer-author">{a.Name}</span>
+                                <span className="answer-date">{a.Data} · {a.Time}</span>
+                              </div>
+                              <div className="answer-body">{a.Answer}</div>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+
+                    {/* Answer form */}
+                    <div className="answer-form">
+                      <h4 className="answer-form-title">Your Answer</h4>
+                      <input
+                        type="text"
+                        className="form-input"
+                        placeholder="Your name"
+                        value={answerName}
+                        onChange={onAnswerNameChange}
+                        disabled={submittingAnswer}
+                      />
+                      <textarea
+                        className="form-textarea"
+                        placeholder="Write your answer..."
+                        value={answerText}
+                        onChange={onAnswerTextChange}
+                        disabled={submittingAnswer}
+                        rows={3}
+                      />
+                      <button
+                        className="answer-submit-btn"
+                        onClick={() => onSubmitAnswer(postId)}
+                        disabled={submittingAnswer}
+                      >
+                        {submittingAnswer ? 'Posting...' : 'Post Answer'}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
-              <div className="post-question">{post.Question}</div>
-            </div>
-          ))}
+            )
+          })}
         </div>
 
         {/* RIGHT: Submit form */}

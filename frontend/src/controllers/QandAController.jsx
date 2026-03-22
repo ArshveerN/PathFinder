@@ -10,9 +10,23 @@ function QandAController({ onBack }) {
     error,
     posts,
     loadingPosts,
+    expandedPostId,
+    answers,
+    loadingAnswers,
+    answerName,
+    answerText,
+    submittingAnswer,
+    voteHistory,
+    answerVoteHistory,
     setName,
     setQuestion,
+    setAnswerName,
+    setAnswerText,
     handleSubmit,
+    handleVote,
+    handleAnswerVote,
+    toggleExpand,
+    submitAnswer,
     clearSuccess,
     clearError,
   } = useQandA()
@@ -26,9 +40,23 @@ function QandAController({ onBack }) {
       error={error}
       posts={posts}
       loadingPosts={loadingPosts}
+      expandedPostId={expandedPostId}
+      answers={answers}
+      loadingAnswers={loadingAnswers}
+      answerName={answerName}
+      answerText={answerText}
+      submittingAnswer={submittingAnswer}
+      voteHistory={voteHistory}
+      answerVoteHistory={answerVoteHistory}
       onNameChange={(e) => setName(e.target.value)}
       onQuestionChange={(e) => setQuestion(e.target.value)}
+      onAnswerNameChange={(e) => setAnswerName(e.target.value)}
+      onAnswerTextChange={(e) => setAnswerText(e.target.value)}
       onSubmit={handleSubmit}
+      onVote={handleVote}
+      onAnswerVote={handleAnswerVote}
+      onToggleExpand={toggleExpand}
+      onSubmitAnswer={submitAnswer}
       onBack={onBack}
       onClearSuccess={clearSuccess}
       onClearError={clearError}
