@@ -1,21 +1,27 @@
 .career-paths-container {
   min-height: 100vh;
-  background-color: #f5f5f5;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 40%, #0f3460 100%);
 }
 
 .career-paths-header {
-  background-color: #2c3e50;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   color: white;
-  padding: 20px;
+  padding: 18px 28px;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 20;
 }
 
 .career-paths-header h1 {
-  font-size: 24px;
-  font-weight: 600;
+  font-size: 22px;
+  font-weight: 700;
   margin: 0;
+  letter-spacing: -0.3px;
 }
 
 .header-tabs {
@@ -25,20 +31,23 @@
 
 .header-tabs .tab {
   background-color: transparent;
-  color: white;
-  border: 1px solid white;
-  padding: 8px 16px;
-  border-radius: 4px;
+  color: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 8px 18px;
+  border-radius: 8px;
   cursor: pointer;
   font-size: 14px;
-  transition: all 0.3s;
+  font-weight: 600;
+  transition: all 0.25s;
 }
 
 .header-tabs .tab.active {
-  background-color: rgba(255, 255, 255, 0.2);
+  background-color: rgba(255, 255, 255, 0.15);
+  color: white;
+  border-color: rgba(255, 255, 255, 0.4);
 }
 
-.header-tabs .tab:hover {
+.header-tabs .tab:hover:not(.active) {
   background-color: rgba(255, 255, 255, 0.1);
 }
 
@@ -51,7 +60,8 @@
 .career-paths-content h2 {
   font-size: 22px;
   margin-bottom: 30px;
-  color: #2c3e50;
+  color: white; /* Updated for dark background */
+  font-weight: 600;
 }
 
 .saved-paths-grid {
@@ -62,42 +72,41 @@
 }
 
 .career-card {
-  background-color: white;
-  border: 2px solid #333;
-  border-radius: 8px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  border: none; /* Removed harsh borders */
   padding: 30px 20px;
   text-align: center;
   font-size: 16px;
   font-weight: 600;
-  color: #2c3e50;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  transition: transform 0.2s;
+  color: #1a1a2e;
+  transition: transform 0.2s, box-shadow 0.2s;
 }
 
 .career-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
 }
 
 .explore-button {
-  background-color: white;
-  border: 2px solid #333;
+  background: linear-gradient(135deg, #3498db, #2980b9);
+  color: white;
+  border: none;
   border-radius: 8px;
   padding: 15px 40px;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
   cursor: pointer;
   display: block;
   margin: 0 auto;
-  transition: all 0.3s;
+  transition: transform 0.15s, box-shadow 0.15s;
+  letter-spacing: 0.3px;
 }
 
 .explore-button:hover {
-  background-color: #3498db;
-  color: white;
-  border-color: #2c3e50;
   transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 12px rgba(52, 152, 219, 0.4);
 }
 
 .explore-modal {
@@ -106,84 +115,81 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.7);
+  background-color: rgba(15, 23, 42, 0.7); /* Darker, slightly blue overlay */
+  backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  animation: fadeIn 0.3s;
+  animation: fadeIn 0.2s ease-out;
 }
 
 .explore-content {
-  background-color: white;
+  background: white;
   border-radius: 12px;
   padding: 30px;
   max-width: 600px;
   width: 90%;
   max-height: 80vh;
   overflow-y: auto;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
 }
 
 .explore-content h3 {
   font-size: 24px;
   margin-bottom: 20px;
-  color: #2c3e50;
+  color: #1a1a2e;
   text-align: center;
+  font-weight: 700;
 }
 
 .career-list {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
 }
 
 .career-list-item {
   background-color: #f8f9fa;
-  border: 2px solid #dee2e6;
-  border-radius: 6px;
+  border: 1px solid #e5e7eb; /* Softened border */
+  border-radius: 8px;
   padding: 15px 20px;
   text-align: left;
   font-size: 15px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
   color: #2c3e50;
 }
 
 .career-list-item:hover {
-  background-color: #3498db;
-  color: white;
-  border-color: #2980b9;
-  transform: translateX(5px);
+  background-color: #f0f7ff;
+  color: #2980b9;
+  border-color: #3498db;
+  transform: translateX(4px);
 }
 
 .close-button {
-  background-color: #e74c3c;
-  color: white;
+  background: #f1f5f9;
+  color: #64748b;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   padding: 12px 30px;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
   cursor: pointer;
   display: block;
   margin: 0 auto;
-  transition: all 0.3s;
+  transition: all 0.2s;
 }
 
 .close-button:hover {
-  background-color: #c0392b;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  background: #e2e8f0;
+  color: #334155;
 }
 
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
