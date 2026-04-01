@@ -13,9 +13,9 @@ function CareerPathsView({
   return (
     <div className="career-paths-container">
       <div className="career-paths-header">
-        <h1>CAREER PATHS</h1>
-        <div className="header-tabs">
-          <button className="tab active" onClick={onBack}>Dashboard</button>
+        <div className="header-left">
+          <button className="back-btn" onClick={onBack}>← Back</button>
+          <h1>CAREER PATHS</h1>
         </div>
       </div>
 
