@@ -90,6 +90,12 @@ function QandAView({
                       <span className="post-date">{post.Data} · {post.Time}</span>
                     </div>
                     <div className="post-question">{post.Question}</div>
+                    {post.ai_answer && (
+                      <div className="ai-answer-box" onClick={e => e.stopPropagation()}>
+                        <span className="ai-answer-label">🤖 AI Suggestion</span>
+                        <p className="ai-answer-text">{post.ai_answer}</p>
+                      </div>
+                    )}
                     <div className="post-meta">
                       <span className="post-answers-count">
                         {answerCount} {answerCount === 1 ? 'answer' : 'answers'}

@@ -187,6 +187,43 @@ function useQandA() {
     }
   }
 
+  /* ── Groq AI suggestion ── */
+  const getAiAnswer = async (questionText) => {
+    const apiKey = import.meta.env.VITE_GROQ_API_KEY
+    if (!apiKey || apiKey === 'your_groq_api_key_here') return null
+
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a knowledgeable academic advisor at the University of Toronto Mississauga (UTM). Answer the student\'s question directly using your knowledge of UTM courses, programs, and prerequisites. Then add one short sentence on where they can confirm or find more details. Be concise.',
+          },
+          {
+            role: 'user',
+            content: questionText,
+          },
+        ],
+        max_tokens: 120,
+        temperature: 0.5,
+      }),
+    })
+
+    if (!response.ok) {
+      const errText = await response.text()
+      console.error('Groq API error:', response.status, errText)
+      return null
+    }
+    const data = await response.json()
+    return data.choices?.[0]?.message?.content?.trim() || null
+  }
+
   /* ── Post question ── */
   const handleSubmit = async () => {
     if (!name.trim() || !question.trim()) {
@@ -198,6 +235,8 @@ function useQandA() {
       setSubmitting(true)
       setError(null)
 
+      const aiAnswer = await getAiAnswer(question.trim())
+
       const { error: supabaseError } = await supabase
         .from('Pending Questions')
         .insert([{
@@ -206,6 +245,7 @@ function useQandA() {
           Time: new Date().toTimeString().split(' ')[0],
           Data: new Date().toISOString().split('T')[0],
           Votes: 0,
+          ai_answer: aiAnswer,
         }])
 
       if (supabaseError) throw supabaseError
