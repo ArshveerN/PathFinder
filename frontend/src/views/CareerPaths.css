@@ -95,6 +95,76 @@
   margin-bottom: 40px;
 }
 
+.cp-edit-btn {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  padding: 7px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.cp-edit-btn:hover { background: rgba(255, 255, 255, 0.2); }
+.cp-edit-btn-active {
+  background: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.cp-loading, .cp-empty {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 14px;
+  margin-bottom: 16px;
+}
+
+.cp-card-wrap {
+  position: relative;
+  display: inline-block;
+}
+
+.cp-card-wrap-edit .career-card {
+  opacity: 0.75;
+  box-shadow: 0 0 0 2px #ef4444;
+}
+
+.cp-remove-btn {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #ef4444;
+  color: #fff;
+  border: none;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  transition: background 0.15s, transform 0.15s;
+  z-index: 2;
+}
+.cp-remove-btn:hover { background: #dc2626; transform: scale(1.15); }
+
+.career-list-item-saved {
+  opacity: 0.5;
+  cursor: not-allowed !important;
+}
+
+.cp-saved-badge {
+  margin-left: 8px;
+  font-size: 11px;
+  background: #d1fae5;
+  color: #065f46;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
 .career-card {
   background: white;
   border-radius: 12px;

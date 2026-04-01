@@ -1,14 +1,18 @@
 import './CareerPaths.css'
 
-function CareerPathsView({ 
-  savedPaths, 
-  showExplore, 
-  allCareers, 
-  onBack, 
-  onOpenRoadmap, 
-  onAddPath, 
-  onToggleExplore, 
-  onCloseExplore 
+function CareerPathsView({
+  savedPaths,
+  showExplore,
+  editMode,
+  loading,
+  allCareers,
+  onBack,
+  onOpenRoadmap,
+  onAddPath,
+  onRemovePath,
+  onToggleExplore,
+  onCloseExplore,
+  onToggleEditMode,
 }) {
   return (
     <div className="career-paths-container">
@@ -17,23 +21,49 @@ function CareerPathsView({
           <button className="back-btn" onClick={onBack}>← Back</button>
           <h1>CAREER PATHS</h1>
         </div>
+        {savedPaths.length > 0 && (
+          <button
+            className={`cp-edit-btn ${editMode ? 'cp-edit-btn-active' : ''}`}
+            onClick={onToggleEditMode}
+          >
+            {editMode ? 'Done' : 'Edit'}
+          </button>
+        )}
       </div>
 
       <div className="career-paths-content">
         <h2>Saved Paths:</h2>
+
+        {loading && <p className="cp-loading">Loading your paths...</p>}
+
+        {!loading && savedPaths.length === 0 && (
+          <p className="cp-empty">No saved paths yet. Explore paths below to add one.</p>
+        )}
+
         <div className="saved-paths-grid">
           {savedPaths.map((path, index) => (
-            <button
-              key={index}
-              className="career-card career-tab"
-              onClick={() => onOpenRoadmap(path)}
-            >
-              {path}
-            </button>
+            <div key={index} className={`cp-card-wrap ${editMode ? 'cp-card-wrap-edit' : ''}`}>
+              <button
+                className="career-card career-tab"
+                onClick={() => !editMode && onOpenRoadmap(path)}
+                style={{ cursor: editMode ? 'default' : 'pointer' }}
+              >
+                {path}
+              </button>
+              {editMode && (
+                <button
+                  className="cp-remove-btn"
+                  onClick={() => onRemovePath(path)}
+                  aria-label={`Remove ${path}`}
+                >
+                  ✕
+                </button>
+              )}
+            </div>
           ))}
         </div>
 
-        <button 
+        <button
           className="explore-button"
           onClick={onToggleExplore}
         >
@@ -48,14 +78,16 @@ function CareerPathsView({
                 {allCareers.map((career, index) => (
                   <button
                     key={index}
-                    className="career-list-item"
+                    className={`career-list-item ${savedPaths.includes(career) ? 'career-list-item-saved' : ''}`}
                     onClick={() => onAddPath(career)}
+                    disabled={savedPaths.includes(career)}
                   >
                     {career}
+                    {savedPaths.includes(career) && <span className="cp-saved-badge">Saved</span>}
                   </button>
                 ))}
               </div>
-              <button 
+              <button
                 className="close-button"
                 onClick={onCloseExplore}
               >
