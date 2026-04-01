@@ -114,7 +114,27 @@ const ZOOM_STEP = 0.15
 // MODIFICATION: destructured props now include loading
 function CareerRoadmapView({ career, coursesWithRequirements, getCourseDetails, loading, onBack }) {
   const [selectedNode, setSelectedNode] = useState(null)
+  const [panelNode, setPanelNode] = useState(null)
+  const [hintVisible, setHintVisible] = useState(false)
+  const [hintLeaving, setHintLeaving] = useState(false)
+  const hintTimerRef = useRef(null)
   const containerRef = useRef(null)
+
+  const showClickHint = () => {
+    clearTimeout(hintTimerRef.current)
+    setHintLeaving(false)
+    setHintVisible(true)
+    hintTimerRef.current = setTimeout(() => {
+      setHintLeaving(true)
+      hintTimerRef.current = setTimeout(() => setHintVisible(false), 350)
+    }, 1800)
+  }
+
+  const hideClickHint = () => {
+    clearTimeout(hintTimerRef.current)
+    setHintLeaving(true)
+    hintTimerRef.current = setTimeout(() => setHintVisible(false), 350)
+  }
   const [zoom, setZoom] = useState(1)
   const [pan, setPan] = useState({ x: 0, y: 0 })
   const [isPanning, setIsPanning] = useState(false)
@@ -289,9 +309,9 @@ function CareerRoadmapView({ career, coursesWithRequirements, getCourseDetails, 
   }
 
   const selectedCourse = useMemo(() => {
-    if (!selectedNode) return null
-    return getCourseDetails(selectedNode) 
-  }, [selectedNode, getCourseDetails])
+    if (!panelNode) return null
+    return getCourseDetails(panelNode)
+  }, [panelNode, getCourseDetails])
 
   // Stroke widths scaled
   const sw = 1.6 * zoom
@@ -308,8 +328,11 @@ function CareerRoadmapView({ career, coursesWithRequirements, getCourseDetails, 
 
   return (
     <div className="rm-container" onClick={(e) => {
-      if (!e.target.closest('.flow-node') && !e.target.closest('.zoom-controls'))
+      if (!e.target.closest('.flow-node') && !e.target.closest('.zoom-controls')) {
         setSelectedNode(null)
+        setPanelNode(null)
+        hideClickHint()
+      }
     }}>
       <div className="rm-header">
         <div className="rm-header-left">
@@ -334,8 +357,14 @@ function CareerRoadmapView({ career, coursesWithRequirements, getCourseDetails, 
           <div className="legend-swatch legend-selected">↑</div>
           <span>Selected &amp; ancestors</span>
         </div>
-        <span className="rm-legend-hint">Ctrl+Scroll to zoom · Drag to pan</span>
+        <span className="rm-legend-hint">Click to highlight prereqs · Click again for details · Ctrl+Scroll to zoom · Drag to pan</span>
       </div>
+
+      {hintVisible && (
+        <div className={`rm-click-hint ${hintLeaving ? 'rm-click-hint-leave' : ''}`}>
+          Click the course again to view details
+        </div>
+      )}
 
       <div className="flow-layout">
         <div
@@ -412,7 +441,17 @@ function CareerRoadmapView({ career, coursesWithRequirements, getCourseDetails, 
                       borderRadius: 10 * zoom,
                       borderWidth: (isSelected || !hasPrereqs) ? 2 * zoom : 1.5 * zoom,
                     }}
-                    onClick={(e) => { e.stopPropagation(); setSelectedNode(prev => prev === course.courseCode ? null : course.courseCode) }}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      if (selectedNode === course.courseCode) {
+                        hideClickHint()
+                        setPanelNode(course.courseCode)
+                      } else {
+                        setSelectedNode(course.courseCode)
+                        setPanelNode(null)
+                        showClickHint()
+                      }
+                    }}
                   >
                     <span className="flow-node-code" style={{ fontSize }}>{course.courseCode}</span>
                   </div>
@@ -424,14 +463,14 @@ function CareerRoadmapView({ career, coursesWithRequirements, getCourseDetails, 
 
         {/* Detail panel */}
         {selectedCourse && (
-          <div className="fdp-overlay" onClick={() => setSelectedNode(null)}>
+          <div className="fdp-overlay" onClick={() => setPanelNode(null)}>
             <div className="flow-detail-panel" onClick={(e) => e.stopPropagation()}>
               <div className="fdp-header">
                 <div style={{ paddingRight: '12px' }}>
                   <span className="fdp-code">{selectedCourse.courseCode}</span>
                   {selectedCourse.name && <h3 className="fdp-name">{selectedCourse.name}</h3>}
                 </div>
-                <button className="fdp-close" onClick={() => setSelectedNode(null)}>✕</button>
+                <button className="fdp-close" onClick={() => setPanelNode(null)}>✕</button>
               </div>
 
               {selectedCourse.description && (
@@ -452,7 +491,7 @@ function CareerRoadmapView({ career, coursesWithRequirements, getCourseDetails, 
                     <div className="fdp-group">
                       <span className="fdp-tag fdp-tag-and">AND — All required</span>
                       {selectedCourse.requirements.filter(r => r.type === 'AND').map((req, i) => (
-                        <div key={i} className="fdp-req-row" onClick={() => setSelectedNode(req.code)}>
+                        <div key={i} className="fdp-req-row" onClick={() => { setSelectedNode(req.code); setPanelNode(null) }}>
                           <span className={`fdp-dot ${pathCodes.has(req.code) ? 'dot-in' : 'dot-ext'}`} />
                           <span className="fdp-req-code">{req.code}</span>
                           <span className={pathCodes.has(req.code) ? 'fdp-label-in' : 'fdp-label-ext'}>
@@ -466,7 +505,7 @@ function CareerRoadmapView({ career, coursesWithRequirements, getCourseDetails, 
                     <div className="fdp-group">
                       <span className="fdp-tag fdp-tag-or">OR — Choose one</span>
                       {selectedCourse.requirements.filter(r => r.type === 'OR').map((req, i) => (
-                        <div key={i} className="fdp-req-row" onClick={() => setSelectedNode(req.code)}>
+                        <div key={i} className="fdp-req-row" onClick={() => { setSelectedNode(req.code); setPanelNode(null) }}>
                           <span className={`fdp-dot ${pathCodes.has(req.code) ? 'dot-in' : 'dot-ext'}`} />
                           <span className="fdp-req-code">{req.code}</span>
                           <span className={pathCodes.has(req.code) ? 'fdp-label-in' : 'fdp-label-ext'}>
@@ -487,7 +526,7 @@ function CareerRoadmapView({ career, coursesWithRequirements, getCourseDetails, 
                     <div className="fdp-section-title">Unlocks</div>
                     <div className="fdp-group">
                       {unlocks.map((e, i) => (
-                        <div key={i} className="fdp-req-row" onClick={() => setSelectedNode(e.to)}>
+                        <div key={i} className="fdp-req-row" onClick={() => { setSelectedNode(e.to); setPanelNode(null) }}>
                           <span className="fdp-dot" style={{ background: '#3b82f6' }} />
                           <span className="fdp-req-code">{e.to}</span>
                         </div>

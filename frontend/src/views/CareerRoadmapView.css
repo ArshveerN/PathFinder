@@ -12,6 +12,34 @@
   position: relative;
 }
 
+/* ── Click hint toast ── */
+.rm-click-hint {
+  position: fixed;
+  top: 80px;
+  right: 24px;
+  background: #fff;
+  color: #1e293b;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 10px 16px;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+  z-index: 100;
+  pointer-events: none;
+  animation: hint-slide-in 0.3s ease forwards;
+}
+.rm-click-hint-leave {
+  animation: hint-slide-out 0.35s ease forwards;
+}
+@keyframes hint-slide-in {
+  from { opacity: 0; transform: translateX(80px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes hint-slide-out {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 0; transform: translateX(80px); }
+}
+
 /* Dot-grid background */
 .rm-container::before {
   content: '';
