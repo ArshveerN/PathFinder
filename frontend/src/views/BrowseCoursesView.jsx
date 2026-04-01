@@ -26,10 +26,54 @@ const StarDisplay = ({ rating }) => {
   )
 }
 
+const REVIEW_TRUNCATE = 120
+
+function ReviewItem({ review, currentUser, onDelete }) {
+  const [showFull, setShowFull] = useState(false)
+  const text = review.review_text || ''
+  const isTruncated = text.length > REVIEW_TRUNCATE
+
+  return (
+    <div className="bc-review-item">
+      <div className="bc-review-header">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <StarDisplay rating={review.rating} />
+          {review.grade != null && (
+            <span style={{ fontSize: '0.85em', fontWeight: '600', color: '#059669', background: '#d1fae5', padding: '2px 6px', borderRadius: '4px' }}>
+              Gr. {review.grade}%
+            </span>
+          )}
+        </div>
+        <span className="bc-review-date">
+          {new Date(review.created_at).toLocaleDateString('en-CA', { year: 'numeric', month: 'short', day: 'numeric' })}
+        </span>
+      </div>
+
+      {text && (
+        <div className="bc-review-body">
+          <p className="bc-review-text">
+            {isTruncated && !showFull ? text.slice(0, REVIEW_TRUNCATE) + '…' : text}
+          </p>
+          {isTruncated && (
+            <button className="bc-review-toggle" onClick={(e) => { e.stopPropagation(); setShowFull(p => !p) }}>
+              {showFull ? 'Show less ▲' : 'Show more ▼'}
+            </button>
+          )}
+        </div>
+      )}
+
+      {currentUser && review.user_id === currentUser.id && (
+        <button className="bc-review-delete-btn" onClick={onDelete}>Delete</button>
+      )}
+    </div>
+  )
+}
+
 const CourseCard = memo(function CourseCard({ course, currentUser, refreshCourses }) {
   const [expanded, setExpanded] = useState(false)
   const [reviews, setReviews] = useState([])
   const [loadingReviews, setLoadingReviews] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(null)
   
   const dist = DIST_COLORS[course.Distribution] || { bg: '#f3f4f6', text: '#4b5563' }
   const stats = course.course_rating_stats?.[0] || { average_rating: null, average_grade: null, total_reviews: 0 }
@@ -49,6 +93,13 @@ const CourseCard = memo(function CourseCard({ course, currentUser, refreshCourse
   useEffect(() => {
     if (expanded) fetchReviews()
   }, [expanded, fetchReviews])
+
+  const deleteReview = async (reviewId) => {
+    await supabase.from('CourseReviews').delete().eq('id', reviewId)
+    setReviews(prev => prev.filter(r => r.id !== reviewId))
+    refreshCourses()
+    setConfirmDelete(null)
+  }
 
   return (
     <div className="bc-card" onClick={(e) => {
@@ -114,30 +165,12 @@ const CourseCard = memo(function CourseCard({ course, currentUser, refreshCourse
                 <p style={{ fontSize: '0.88em', color: '#9ca3af', fontStyle: 'italic' }}>No reviews yet. Be the first!</p>
               ) : (
                 reviews.map(review => (
-                  <div key={review.id} className="bc-review-item">
-                    <div className="bc-review-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-                      
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <StarDisplay rating={review.rating} />
-                        {review.grade != null && (
-                          <span style={{ fontSize: '0.85em', fontWeight: '600', color: '#059669', background: '#d1fae5', padding: '2px 6px', borderRadius: '4px' }}>
-                            Grade: {review.grade}%
-                          </span>
-                        )}
-                      </div>
-
-                      <span className="bc-review-date">
-                        {new Date(review.created_at).toLocaleDateString('en-CA', {
-                          year: 'numeric',
-                          month: 'short',
-                          day: 'numeric'
-                        })}
-                      </span>
-                    </div>
-                    {review.review_text && (
-                      <p className="bc-review-text">{review.review_text}</p>
-                    )}
-                  </div>
+                  <ReviewItem
+                    key={review.id}
+                    review={review}
+                    currentUser={currentUser}
+                    onDelete={(e) => { e.stopPropagation(); setConfirmDelete(review.id) }}
+                  />
                 ))
               )}
             </div>
@@ -148,6 +181,18 @@ const CourseCard = memo(function CourseCard({ course, currentUser, refreshCourse
       <span className="bc-toggle">
         {expanded ? 'Show less ▲' : 'Show more ▼'}
       </span>
+
+      {confirmDelete && (
+        <div className="bc-confirm-overlay" onClick={(e) => { e.stopPropagation(); setConfirmDelete(null) }}>
+          <div className="bc-confirm-box" onClick={e => e.stopPropagation()}>
+            <p className="bc-confirm-message">Delete your review for this course?</p>
+            <div className="bc-confirm-actions">
+              <button className="bc-confirm-cancel" onClick={(e) => { e.stopPropagation(); setConfirmDelete(null) }}>Cancel</button>
+              <button className="bc-confirm-delete" onClick={(e) => { e.stopPropagation(); deleteReview(confirmDelete) }}>Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 })

@@ -103,6 +103,7 @@
 
 /* ── Card ── */
 .bc-card {
+  position: relative;
   background: #fff;
   border: 1px solid #e5e7eb;
   border-radius: 12px;
@@ -324,18 +325,90 @@
 }
 
 .bc-review-item {
+  position: relative;
   background: #f9fafb;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
-  padding: 12px 14px;
+  padding: 12px 14px 12px 14px;
+  overflow: hidden;
 }
 
 .bc-review-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
+  padding-right: 56px;
 }
+
+.bc-review-delete-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: none;
+  border: 1px solid #fca5a5;
+  color: #ef4444;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.bc-review-delete-btn:hover { background: #ef4444; color: #fff; }
+
+.bc-confirm-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  border-radius: inherit;
+}
+.bc-confirm-box {
+  background: #fff;
+  border-radius: 10px;
+  padding: 24px 28px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+  text-align: center;
+  max-width: 300px;
+  width: 90%;
+}
+.bc-confirm-message {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1a1a2e;
+  margin: 0 0 16px;
+}
+.bc-confirm-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+.bc-confirm-cancel {
+  padding: 7px 20px;
+  border-radius: 7px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  color: #374151;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.bc-confirm-cancel:hover { background: #f3f4f6; }
+.bc-confirm-delete {
+  padding: 7px 20px;
+  border-radius: 7px;
+  border: none;
+  background: #ef4444;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.bc-confirm-delete:hover { background: #dc2626; }
 
 .bc-review-date {
   font-size: 0.78em;
@@ -343,9 +416,27 @@
   white-space: nowrap;
 }
 
+.bc-review-body {
+  overflow: hidden;
+  word-break: break-word;
+}
+
+.bc-review-toggle {
+  background: none;
+  border: none;
+  color: #3b82f6;
+  font-size: 0.8em;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 2px 0;
+  margin-top: 2px;
+}
+.bc-review-toggle:hover { text-decoration: underline; }
+
 .bc-review-text {
   margin: 0;
   font-size: 0.88em;
   color: #374151;
   line-height: 1.5;
+  word-break: break-word;
 }
