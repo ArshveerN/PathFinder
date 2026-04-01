@@ -28,12 +28,6 @@ function DashboardView({ message, onSectionClick, onDashboardClick, onLogout }) 
         </div>
 
         <div className="section">
-          <h2>Grade Predictor</h2>
-          <p>Calculate GPA based on your predicted grades</p>
-          <button onClick={() => onSectionClick('Grade Predictor')}>Predict Grades</button>
-        </div>
-
-        <div className="section">
           <h2>Q&A</h2>
           <p>Ask and answer course-related questions</p>
           <button onClick={() => onSectionClick('Q&A')}>Visit Forum</button>
