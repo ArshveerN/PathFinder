@@ -160,7 +160,7 @@ function BrowseCoursesView({ courses, loading, error, onBack }) {
   const [searchTerm, setSearchTerm] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [levelFilter, setLevelFilter] = useState('All')
-  const [sortBy, setSortBy] = useState('code')
+  const [sortBy, setSortBy] = useState('code-asc')
   const [page, setPage] = useState(1)
 
   useEffect(() => {
@@ -172,12 +172,16 @@ function BrowseCoursesView({ courses, loading, error, onBack }) {
   }, [searchTerm])
 
   const filteredCourses = useMemo(() => {
+    // 1. Apply Filtering Logic First
     let result = (courses || []).filter((course) => {
       const searchLower = debouncedSearch.toLowerCase()
       const code = (course['Course Code'] || '').toLowerCase()
       const name = (course.Name || '').toLowerCase()
 
+      // Search Filter
       if (searchLower && !code.includes(searchLower) && !name.includes(searchLower)) return false
+      
+      // Level Filter
       if (levelFilter !== 'All') {
         const match = (course['Course Code'] || '').match(/^[a-zA-Z]+(\d)/)
         if (!match || match[1] + '00' !== levelFilter) return false
@@ -185,15 +189,29 @@ function BrowseCoursesView({ courses, loading, error, onBack }) {
       return true
     })
 
-    if (sortBy === 'rating') {
-      result.sort((a, b) => {
-        const rA = a.course_rating_stats?.[0]?.average_rating || 0
-        const rB = b.course_rating_stats?.[0]?.average_rating || 0
-        return rB - rA
-      })
-    } else {
-      result.sort((a, b) => (a['Course Code'] || '').localeCompare(b['Course Code'] || ''))
-    }
+    // 2. Apply Sorting Logic on the Filtered Result
+    result.sort((a, b) => {
+      const statsA = a.course_rating_stats?.[0] || { average_rating: 0, average_grade: 0 }
+      const statsB = b.course_rating_stats?.[0] || { average_rating: 0, average_grade: 0 }
+
+      switch (sortBy) {
+        case 'name-asc':
+          return (a.Name || '').localeCompare(b.Name || '')
+        case 'name-desc':
+          return (b.Name || '').localeCompare(a.Name || '')
+        case 'code-asc':
+          return (a['Course Code'] || '').localeCompare(b['Course Code'] || '')
+        case 'code-desc':
+          return (b['Course Code'] || '').localeCompare(a['Course Code'] || '')
+        case 'rating-desc':
+          return (statsB.average_rating || 0) - (statsA.average_rating || 0)
+        case 'grade-desc':
+          return (statsB.average_grade || 0) - (statsA.average_grade || 0)
+        default:
+          return 0
+      }
+    })
+
     return result
   }, [courses, debouncedSearch, levelFilter, sortBy])
 
@@ -218,16 +236,29 @@ function BrowseCoursesView({ courses, loading, error, onBack }) {
             onChange={(e) => setSearchTerm(e.target.value)}
             className="bc-search-input"
           />
-          <select value={levelFilter} onChange={(e) => { setLevelFilter(e.target.value); setPage(1); }} className="bc-level-select">
+          <select 
+            value={levelFilter} 
+            onChange={(e) => { setLevelFilter(e.target.value); setPage(1); }} 
+            className="bc-level-select"
+          >
             <option value="All">All Levels</option>
             <option value="100">100 Level</option>
             <option value="200">200 Level</option>
             <option value="300">300 Level</option>
             <option value="400">400 Level</option>
           </select>
-          <select value={sortBy} onChange={(e) => { setSortBy(e.target.value); setPage(1); }} className="bc-level-select">
-            <option value="code">Sort by Code</option>
-            <option value="rating">Sort by Rating</option>
+
+          <select 
+            value={sortBy} 
+            onChange={(e) => { setSortBy(e.target.value); setPage(1); }} 
+            className="bc-level-select"
+          >
+            <option value="code-asc">Sort by Code (A-Z)</option>
+            <option value="code-desc">Sort by Code (Z-A)</option>
+            <option value="name-asc">Sort by Name (A-Z)</option>
+            <option value="name-desc">Sort by Name (Z-A)</option>
+            <option value="rating-desc">Highest Rating</option>
+            <option value="grade-desc">Highest Avg Grade</option>
           </select>
         </div>
 
