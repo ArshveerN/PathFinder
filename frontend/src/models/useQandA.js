@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import supabase from '../supabaseClient'
+import useAuth from './useAuth'
 
 function getVoteHistory() {
   try {
@@ -22,6 +23,9 @@ function saveAnswerVoteHistory(history) {
 }
 
 function useQandA() {
+  const { session } = useAuth()
+  const userId = session?.user?.id ?? null
+
   const [name, setName] = useState('')
   const [question, setQuestion] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -175,6 +179,7 @@ function useQandA() {
           Time: new Date().toTimeString().split(' ')[0],
           Data: new Date().toISOString().split('T')[0],
           Votes: 0,
+          user_id: userId,
         }])
       if (sbError) throw sbError
       setAnswerName('')
@@ -246,6 +251,7 @@ function useQandA() {
           Data: new Date().toISOString().split('T')[0],
           Votes: 0,
           ai_answer: aiAnswer,
+          user_id: userId,
         }])
 
       if (supabaseError) throw supabaseError
@@ -321,6 +327,36 @@ function useQandA() {
     }
   }
 
+  /* ── Delete question (and its answers) ── */
+  const deleteQuestion = async (postId) => {
+    try {
+      await supabase.from('Answers').delete().eq('question_id', postId)
+      const { error } = await supabase.from('Pending Questions').delete().eq('Id', postId)
+      if (error) throw error
+      setPosts(prev => prev.filter(p => (p.Id ?? p.id) !== postId))
+      if (expandedPostId === postId) setExpandedPostId(null)
+    } catch (err) {
+      setError(err.message || String(err))
+    }
+  }
+
+  /* ── Delete answer ── */
+  const deleteAnswer = async (answerId, questionId) => {
+    try {
+      const { error } = await supabase.from('Answers').delete().eq('id', answerId)
+      if (error) throw error
+      setAnswers(prev => ({
+        ...prev,
+        [questionId]: (prev[questionId] || []).filter(a => (a.Id ?? a.id) !== answerId),
+      }))
+      setPosts(prev => prev.map(p =>
+        (p.Id ?? p.id) === questionId ? { ...p, _answerCount: Math.max(0, (p._answerCount || 1) - 1) } : p
+      ))
+    } catch (err) {
+      setError(err.message || String(err))
+    }
+  }
+
   const clearSuccess = () => setSuccessMessage(null)
   const clearError = () => setError(null)
 
@@ -330,8 +366,10 @@ function useQandA() {
     expandedPostId, answers, loadingAnswers,
     answerName, answerText, submittingAnswer,
     voteHistory, answerVoteHistory,
+    userId,
     setName, setQuestion, setAnswerName, setAnswerText,
     handleSubmit, handleVote, handleAnswerVote, toggleExpand, submitAnswer,
+    deleteQuestion, deleteAnswer,
     clearSuccess, clearError,
   }
 }

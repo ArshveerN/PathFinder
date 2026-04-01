@@ -1,5 +1,20 @@
+import { useState } from 'react'
 import './CareerPaths.css'
 import './QandA.css'
+
+function ConfirmDialog({ message, onConfirm, onCancel }) {
+  return (
+    <div className="confirm-overlay" onClick={onCancel}>
+      <div className="confirm-box" onClick={e => e.stopPropagation()}>
+        <p className="confirm-message">{message}</p>
+        <div className="confirm-actions">
+          <button className="confirm-cancel" onClick={onCancel}>Cancel</button>
+          <button className="confirm-delete" onClick={onConfirm}>Delete</button>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 function QandAView({
   name,
@@ -17,6 +32,7 @@ function QandAView({
   submittingAnswer,
   voteHistory,
   answerVoteHistory,
+  userId,
   onNameChange,
   onQuestionChange,
   onAnswerNameChange,
@@ -26,10 +42,17 @@ function QandAView({
   onAnswerVote,
   onToggleExpand,
   onSubmitAnswer,
+  onDeleteQuestion,
+  onDeleteAnswer,
   onBack,
   onClearSuccess,
   onClearError,
 }) {
+  const [confirm, setConfirm] = useState(null)
+
+  const askConfirm = (message, onConfirm) => setConfirm({ message, onConfirm })
+  const closeConfirm = () => setConfirm(null)
+
   return (
     <div className="career-paths-container">
       <div className="career-paths-header">
@@ -88,6 +111,15 @@ function QandAView({
                     <div className="post-header">
                       <span className="post-author">{post.Name}</span>
                       <span className="post-date">{post.Data} · {post.Time}</span>
+                      {userId && post.user_id === userId && (
+                        <button
+                          className="delete-btn"
+                          onClick={(e) => { e.stopPropagation(); askConfirm('Delete this question and all its answers?', () => onDeleteQuestion(postId)) }}
+                          aria-label="Delete question"
+                        >
+                          Delete
+                        </button>
+                      )}
                     </div>
                     <div className="post-question">{post.Question}</div>
                     {post.ai_answer && (
@@ -149,6 +181,15 @@ function QandAView({
                               <div className="answer-header">
                                 <span className="answer-author">{a.Name}</span>
                                 <span className="answer-date">{a.Data} · {a.Time}</span>
+                                {userId && a.user_id === userId && (
+                                  <button
+                                    className="delete-btn"
+                                    onClick={() => askConfirm('Delete this answer?', () => onDeleteAnswer(answerId, postId))}
+                                    aria-label="Delete answer"
+                                  >
+                                    Delete
+                                  </button>
+                                )}
                               </div>
                               <div className="answer-body">{a.Answer}</div>
                             </div>
@@ -252,6 +293,14 @@ function QandAView({
         </div>
 
       </div>
+
+      {confirm && (
+        <ConfirmDialog
+          message={confirm.message}
+          onConfirm={() => { confirm.onConfirm(); closeConfirm() }}
+          onCancel={closeConfirm}
+        />
+      )}
     </div>
   )
 }

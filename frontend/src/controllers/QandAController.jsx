@@ -27,6 +27,9 @@ function QandAController({ onBack }) {
     handleAnswerVote,
     toggleExpand,
     submitAnswer,
+    deleteQuestion,
+    deleteAnswer,
+    userId,
     clearSuccess,
     clearError,
   } = useQandA()
@@ -57,6 +60,9 @@ function QandAController({ onBack }) {
       onAnswerVote={handleAnswerVote}
       onToggleExpand={toggleExpand}
       onSubmitAnswer={submitAnswer}
+      onDeleteQuestion={deleteQuestion}
+      onDeleteAnswer={deleteAnswer}
+      userId={userId}
       onBack={onBack}
       onClearSuccess={clearSuccess}
       onClearError={clearError}
