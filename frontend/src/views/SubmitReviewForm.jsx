@@ -3,6 +3,7 @@ import supabase from '../supabaseClient';
 
 export default function SubmitReviewForm({ courseCode, userId, onReviewSubmitted }) {
   const [rating, setRating] = useState(5);
+  const [grade, setGrade] = useState('');
   const [text, setText] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -12,12 +13,22 @@ export default function SubmitReviewForm({ courseCode, userId, onReviewSubmitted
     setSubmitting(true);
     setErrorMsg('');
     
+    // Parse the grade. If it's empty, send null.
+    const parsedGrade = grade !== '' ? parseInt(grade, 10) : null;
+
+    if (parsedGrade !== null && (parsedGrade < 0 || parsedGrade > 100)) {
+      setErrorMsg('Grade must be between 0 and 100.');
+      setSubmitting(false);
+      return;
+    }
+    
     const { error } = await supabase
       .from('CourseReviews')
       .insert([{ 
         course_code: courseCode, 
         user_id: userId, 
         rating: parseInt(rating), 
+        grade: parsedGrade, 
         review_text: text 
       }]);
 
@@ -32,6 +43,7 @@ export default function SubmitReviewForm({ courseCode, userId, onReviewSubmitted
     } else {
       setText('');
       setRating(5);
+      setGrade('');
       onReviewSubmitted(); 
     }
   };
@@ -48,22 +60,42 @@ export default function SubmitReviewForm({ courseCode, userId, onReviewSubmitted
       boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
       marginBottom: '16px'
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-        <label htmlFor={`rating-${courseCode}`} style={{ fontSize: '0.95em', fontWeight: '500', color: '#374151' }}>
-          Rating:
-        </label>
-        <select 
-          id={`rating-${courseCode}`}
-          value={rating} 
-          onChange={(e) => setRating(e.target.value)}
-          style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #d1d5db', background: '#f9fafb', cursor: 'pointer' }}
-        >
-          <option value={5}>5 - Excellent</option>
-          <option value={4}>4 - Good</option>
-          <option value={3}>3 - Average</option>
-          <option value={2}>2 - Poor</option>
-          <option value={1}>1 - Terrible</option>
-        </select>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
+        
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <label htmlFor={`rating-${courseCode}`} style={{ fontSize: '0.95em', fontWeight: '500', color: '#374151' }}>
+            Rating:
+          </label>
+          <select 
+            id={`rating-${courseCode}`}
+            value={rating} 
+            onChange={(e) => setRating(e.target.value)}
+            style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #d1d5db', background: '#f9fafb', cursor: 'pointer' }}
+          >
+            <option value={5}>5 - Excellent</option>
+            <option value={4}>4 - Good</option>
+            <option value={3}>3 - Average</option>
+            <option value={2}>2 - Poor</option>
+            <option value={1}>1 - Terrible</option>
+          </select>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <label htmlFor={`grade-${courseCode}`} style={{ fontSize: '0.95em', fontWeight: '500', color: '#374151' }}>
+            Grade (%):
+          </label>
+          <input
+            id={`grade-${courseCode}`}
+            type="number"
+            min="0"
+            max="100"
+            value={grade}
+            onChange={(e) => setGrade(e.target.value)}
+            placeholder="e.g. 85"
+            style={{ padding: '6px 10px', width: '80px', borderRadius: '6px', border: '1px solid #d1d5db', background: '#f9fafb' }}
+          />
+        </div>
+
       </div>
       
       <textarea 

@@ -32,7 +32,7 @@ const CourseCard = memo(function CourseCard({ course, currentUser, refreshCourse
   const [loadingReviews, setLoadingReviews] = useState(false)
   
   const dist = DIST_COLORS[course.Distribution] || { bg: '#f3f4f6', text: '#4b5563' }
-  const stats = course.course_rating_stats?.[0] || { average_rating: null, total_reviews: 0 }
+  const stats = course.course_rating_stats?.[0] || { average_rating: null, average_grade: null, total_reviews: 0 }
 
   const fetchReviews = useCallback(async () => {
     setLoadingReviews(true)
@@ -62,6 +62,7 @@ const CourseCard = memo(function CourseCard({ course, currentUser, refreshCourse
           {stats.total_reviews > 0 && (
             <span style={{ fontSize: '0.85em', fontWeight: 'bold', color: '#d97706', background: '#fef3c7', padding: '2px 8px', borderRadius: '12px' }}>
               ⭐ {stats.average_rating} ({stats.total_reviews})
+              {stats.average_grade != null && ` | Avg: ${Math.round(stats.average_grade)}%`}
             </span>
           )}
           <span className="bc-badge" style={{ background: dist.bg, color: dist.text }}>
@@ -114,8 +115,17 @@ const CourseCard = memo(function CourseCard({ course, currentUser, refreshCourse
               ) : (
                 reviews.map(review => (
                   <div key={review.id} className="bc-review-item">
-                    <div className="bc-review-header">
-                      <StarDisplay rating={review.rating} />
+                    <div className="bc-review-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                      
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <StarDisplay rating={review.rating} />
+                        {review.grade != null && (
+                          <span style={{ fontSize: '0.85em', fontWeight: '600', color: '#059669', background: '#d1fae5', padding: '2px 6px', borderRadius: '4px' }}>
+                            Grade: {review.grade}%
+                          </span>
+                        )}
+                      </div>
+
                       <span className="bc-review-date">
                         {new Date(review.created_at).toLocaleDateString('en-CA', {
                           year: 'numeric',

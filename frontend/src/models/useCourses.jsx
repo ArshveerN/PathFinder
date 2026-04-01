@@ -13,7 +13,7 @@ async function fetchAllCourses() {
       .from('Courses')
       .select(`
         *,
-        course_rating_stats(average_rating, total_reviews)
+        course_rating_stats(average_rating, average_grade, total_reviews)
       `)
       .range(from, from + PAGE_SIZE - 1)
 
