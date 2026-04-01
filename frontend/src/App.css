@@ -51,13 +51,13 @@
 
 .dashboard {
   display: grid;
-  /* Auto-fit creates a responsive grid that wraps when the screen gets smaller */
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: 24px;
-  padding: 50px 20px;
-  max-width: 850px; /* Reduced width keeps cards from stretching too far */
+  padding: 50px 40px;
+  max-width: 1100px;
   margin: 0 auto;
-  align-content: start; /* Prevents cards from stretching vertically */
+  justify-content: center;
+  align-content: start;
   flex: 1;
 }
 
@@ -102,24 +102,28 @@
   background: linear-gradient(135deg, #3498db, #2980b9);
   color: white;
   border: none;
-  padding: 13px 20px;
+  padding: 18px 20px;
   border-radius: 8px;
   cursor: pointer;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
-  transition: transform 0.15s, box-shadow 0.15s;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, letter-spacing 0.2s ease;
   letter-spacing: 0.3px;
-  align-self: flex-start;
-  margin-top: auto; /* Works with flex-grow to pin button to bottom */
+  align-self: stretch;
+  margin-top: auto;
+  width: 100%;
 }
 
 .section button:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(52, 152, 219, 0.4);
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 8px 24px rgba(52, 152, 219, 0.5);
+  background: linear-gradient(135deg, #4aa8f0, #3498db);
+  letter-spacing: 0.8px;
 }
 
 .section button:active {
-  transform: translateY(0);
+  transform: translateY(0) scale(0.98);
+  box-shadow: 0 2px 8px rgba(52, 152, 219, 0.3);
 }
 
 .message {
