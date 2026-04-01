@@ -8,7 +8,7 @@ import CareerRoadmapController from './controllers/CareerRoadmapController'
 import BrowseCoursesController from './controllers/BrowseCoursesController'
 import QandAController from './controllers/QandAController'
 
-function AppContent({ logout }) {
+function AppContent({ logout, session }) {
     const {
         message,
         currentView,
@@ -53,6 +53,7 @@ function AppContent({ logout }) {
             onSectionClick={handleClick}
             onDashboardClick={goToDashboard}
             onLogout={logout}
+            userEmail={session?.user?.email}
         />
     )
 }
@@ -68,7 +69,7 @@ function App() {
 
     return (
         <CoursesProvider>
-            <AppContent logout={logout} />
+            <AppContent logout={logout} session={session} />
         </CoursesProvider>
     )
 }

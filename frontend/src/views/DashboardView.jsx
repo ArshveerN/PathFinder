@@ -1,6 +1,6 @@
 import '../App.css'
 
-function DashboardView({ message, onSectionClick, onDashboardClick, onLogout }) {
+function DashboardView({ message, onSectionClick, onDashboardClick, onLogout, userEmail }) {
   return (
     <div className="app">
       <header className="header">
@@ -10,7 +10,10 @@ function DashboardView({ message, onSectionClick, onDashboardClick, onLogout }) 
       <nav className="nav">
         <button onClick={onDashboardClick}>Dashboard</button>
         {onLogout && (
-          <button onClick={onLogout} style={{ marginLeft: 'auto' }}>Logout</button>
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '12px' }}>
+            {userEmail && <span style={{ color: 'rgba(255,255,255,0.75)', fontSize: '14px' }}>{userEmail}</span>}
+            <button onClick={onLogout}>Logout</button>
+          </div>
         )}
       </nav>
 
